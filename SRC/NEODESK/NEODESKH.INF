@@ -1,0 +1,160 @@
+;.INF file... ';' is a comment char and must be the first on the line
+;All filenames and paths must be uppercase
+;
+;Oldest NeoDesk that can read this file
+4.00
+;Resolution: x,y,char_h
+640 400 16
+;Autoexec file
+AUTOEXC ``
+;Printer: type,FFD
+QUEUE 0 0
+;Control: ampm,clock,save,mins,caches,repeat1,repeat2,click,bell,
+;         mclick,floppyA,floppyB,volume/balance,treble/bass
+CONTROL 1 0 0 5 15 300 20 1 1 3 3 3 5152 102
+;Color pallette: RRGGBB (16)
+PALETTE FFFFFF 0 FF0000 5E9E FF FFFF FFFF00 FF00FF CCCCCC 858585 A70000 A700 A7 A7A7 A7A700 A700A7
+;Snap to grid: x,y,resort,overlap
+SNAP 6 1 F T
+;Print directory
+PRNTDIR 0
+;Copy/move/del: copy_mode,confirm_copies,confirm_deletes,conf_over,
+;               diskcopy,diskcopy_back,copies,copy_back,del_back,
+;               rename_dest,filt_copy,filt_del,count_copy,count_del
+COPYMOV 0 0 1 1 2 T 1 T T F F F T T
+;Misc: back_speed,tos_pause,unload,Control-Z_text,exit_status,quit_alert,
+;      savecfg,other_prefs,date_fmt,speed_factor,numsep,open_fold,
+;      view_fit,view_mode
+MISCPRF 2 1 0 0 0 0 1 0 0 100 0 F T 1
+;Format: tracks,sides,sectors/track,Twist,drive,backgrnd
+FORMAT 80 1 9 3 0 T
+;Batch file interp.
+BATCH `H:\COMMAND.TOS`
+;Text viewer
+TXTREAD ``
+;Windows: placement,split,x,y,width,height,sliders,show_icons,lg/small
+;         1+columns,show_size,date,time,sort,path
+WINDOW1 2 0 88 40 408 328 0 1 1 1 1 1 1 0 C:\*.*
+WINDOW2 1 0 16 39 560 201 0 1 1 1 1 1 1 0 D:\*.*
+WINDOW3 3 0 167 213 501 206 0 1 0 1 1 1 1 0 H:\SOURCE\NEODESK\COMPILE.GRP
+WINDOW4 0 0 32 55 560 201 0 0 0 0 0 0 0 0 
+WINDOW5 0 0 48 71 560 201 0 0 0 0 0 0 0 0 
+WINDOW6 0 0 64 87 560 201 0 0 0 0 0 0 0 0 
+WINDOW7 0 0 80 103 560 201 0 0 0 0 0 0 0 0 
+DFLTWIN 1 1 1 1 1 1 0
+;Window filters: flags,size_type,date,time,templ_mask,3 times,3 dates,
+;                3 sizes,3 long templs
+FILTER1 2080 0 0 0 0 0 0 0 0 0 0 0 0 0 `` `` ``
+FILTER2 2080 0 0 0 0 0 0 0 0 0 0 0 0 0 `` `` ``
+FILTER3 2080 0 0 0 0 0 0 0 0 0 0 0 0 0 `` `` ``
+FILTER4 2080 0 0 0 0 0 0 0 0 0 0 0 0 0 `` `` ``
+FILTER5 2080 0 0 0 0 0 0 0 0 0 0 0 0 0 `` `` ``
+FILTER6 2080 0 0 0 0 0 0 0 0 0 0 0 0 0 `` `` ``
+FILTER7 2080 0 0 0 0 0 0 0 0 0 0 0 0 0 `` `` ``
+;Copy/del filter
+CPDLFLT 2080 0 0 0 0 0 0 0 0 0 0 0 0 0 `` `` ``
+;Search filter
+SRCHFLT 2080 0 0 0 0 0 0 0 0 0 0 0 0 0 `` `` ``
+;Pre-defined templates (6)
+SRCHTMP `*.*` `*.PRG` `*.TOS` `*.TTP` `*.ACC` `*.TXT`
+;Default TTP params.: 5 lines of up to 38 chars
+TTP1 
+TTP2 
+TTP3 
+TTP4 
+TTP5 
+;Environment: use_argv,use_parent
+ENVOPTS F T
+;Dialogs: in_wind,pos_mode
+DIALPRF T 0
+;Desktop: in_wind,window x,y,width,height,show_pic,wallpaper,color_mode,picture
+;         fit_pic,pic_mode
+DESKPRF F 0 19 640 381 F F 1  F 0
+;Windows: fill,real_time,icon_id,icon_size,sm_id,sm_size,lg_id,lg_size,name_id,
+;         name_size
+WINDPRF 180 T 1 8 1 9 1 10 1 10
+;Help: font_id,point,rows,cols,x,y,topic,match_case,all,path
+HELPPRF 1 10 20 75 0 0 `` F F 
+GUI1 -4032 15 08 00 20 0B 61 00
+GUI2 07 68 00 07 6E 00 04 68 00 04 6E 00 07 6A 00 07 6C 00 04 6A 00 04 6C 00 08 01 00 08 0E 00 08 53 00 04 63 00 04 65 00
+GUI8 24001141 10001170 34001141 24001141
+GUI9 20 9880 0 9880 9880 9880 9880 0 9880 0 9880 0 9880 9880 0 9880
+GUIA 9880 0 9880 0 9880 9880 9880 0 9880 9880 0 9880 0 9880 9880 9880
+GUIB 0 1100 1100 1100 1100 1100 1180 1180 1180 0 1180 1180 1180 1100 1111 1100
+GUIC 1100 1100 1100 1111 1100 1100 1100 1111 1100 1100 1100 1100 1111 1100 1100 1100
+GUID 0 1100 11A1 1100 1100 1100 1180 1180 1180 0 1180 1180 1180 1100 1111 1100
+GUIE 1100 1100 1100 1111 1100 1100 1100 1111 1100 1100 1100 1100 1111 1100 1100 1100
+;Icons: type,x,y,letter,text,prog_type,prog_path
+DESKICN 0 3 1 `A` `Floppy Drive` 0 ``
+DESKICN 0 82 1 `B` `Floppy Drive` 0 ``
+DESKICN 1 161 1 `C` `Hard Disk` 0 ``
+DESKICN 1 240 1 `D` `Hard Disk` 0 ``
+DESKICN 1 319 1 `E` `Hard Disk` 0 ``
+DESKICN 1 398 1 `H` `Hard Disk` 0 ``
+DESKICN 3 556 1 `` `Clipboard` 0 ``
+DESKICN 5 3 42 `` `Trash` 0 ``
+DESKICN 4 82 42 `` `Printer` 0 ``
+DESKICN 99 556 83 `` `MGIF.TTP` 1947 `H:\GIF\MGIF.TTP`
+DESKICN 99 3 165 `` `STeno` 1944 `C:\STENO.ACC`
+DESKICN 99 556 165 `` `GIF` 1536 `H:\GIF`
+DESKICN 99 3 206 `` `MemFile` 1944 `C:\MEMFIL30.ACC`
+DESKICN 99 556 206 `` `INTRFACE` 1536 `H:\INTRFACE`
+DESKICN 99 556 247 `` `NEODESK` 1536 `H:\SOURCE\NEODESK`
+DESKICN 99 556 288 `` `WINDOWS` 1536 `H:\SOURCE\WINDOWS`
+DESKICN 99 3 329 `` `MINTNP.PRG` 1944 `H:\MINTNP.PRG`
+DESKICN 99 161 329 `` `NEODESK2.CFG` 2048 `H:\SOURCE\NEODESK\NEODESK2.CFG`
+DESKICN 99 240 329 `` `GENEVA.PRG` 1944 `H:\SOURCE\WINDOWS\GENEVA.PRG`
+DESKICN 99 319 329 `` `WINDOWS.CFG` 2048 `H:\SOURCE\WINDOWS\WINDOWS.CFG`
+DESKICN 99 477 329 `` `Compile` 2560 `H:\SOURCE\NEODESK\COMPILE.GRP`
+;Executable Extensions: type,ext
+EXTENSN 10 `.PRG`
+EXTENSN 10 `.APP`
+EXTENSN 18 `.TOS`
+EXTENSN 1A `.TTP`
+EXTENSN 12 `.GTP`
+EXTENSN 14 `.BAT`
+EXTENSN 16 `.BTP`
+EXTENSN 11 `.NPG`
+EXTENSN 13 `.NTP`
+EXTENSN 10 `.ACC`
+;Dialog Positions: #,x,y
+DIALOG 0 172 49
+DIALOG 1 160 101
+DIALOG 2 204 157
+DIALOG 3 160 65
+DIALOG 4 156 101
+DIALOG 5 208 41
+DIALOG 6 170 73
+DIALOG 7 48 53
+DIALOG 8 196 157
+DIALOG 9 154 69
+DIALOG 10 174 137
+DIALOG 11 152 149
+DIALOG 12 162 85
+DIALOG 13 210 149
+DIALOG 14 190 38
+DIALOG 15 164 57
+DIALOG 16 170 73
+DIALOG 17 188 69
+DIALOG 18 210 137
+DIALOG 19 180 109
+DIALOG 20 202 77
+DIALOG 21 196 69
+DIALOG 22 180 85
+DIALOG 23 196 133
+DIALOG 24 212 53
+DIALOG 25 180 81
+DIALOG 26 184 37
+DIALOG 27 200 113
+DIALOG 28 192 49
+DIALOG 29 184 33
+DIALOG 30 160 85
+DIALOG 31 184 101
+DIALOG 32 160 113
+DIALOG 33 196 89
+DIALOG 34 176 153
+DIALOG 35 154 49
+DIALOG 36 184 109
+DIALOG 37 156 25
+DIALOG 38 208 113
+DIALOG 39 156 25

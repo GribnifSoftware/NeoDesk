@@ -1,0 +1,7 @@
+settings.exe =
+
+settingx.c	( settings.c ) ; must come first
+
+PCSTDLIB.LIB       ; standard library
+PCTOSLIB.LIB       ; TOS library
+new_gem.LIB       ; AES and VDI library

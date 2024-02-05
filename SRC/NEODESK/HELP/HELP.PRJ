@@ -1,0 +1,8 @@
+help.exe =
+
+help\helpx.c	( help\help.c,help\fontlist.c ) ; must come first
+help\graphics.c
+
+PCSTDLIB.LIB       ; standard library
+PCTOSLIB.LIB       ; TOS library
+new_gem.LIB       ; AES and VDI library

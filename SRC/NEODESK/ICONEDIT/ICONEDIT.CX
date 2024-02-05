@@ -1,0 +1,3106 @@
+/* NeoDesk 3.02 by Dan Wilga
+   Copyright ½ 1990, Gribnif Software.
+   All Rights Reserved.
+*/
+
+#include "neodesk.h"
+#include "aes.h"
+#include "string.h"
+#include "tos.h"
+#include "stdlib.h"
+#include "stdio.h"
+#include "vdi.h"
+#include "neocommn.h"
+#include "iconedit.h"
+#include "xwind.h"
+
+#define DATASIZ (ICON_H*ICON_WW*2)
+#define MASKSIZ DATASIZ
+#define PIXELS  (ICON_W*ICON_H)
+
+extern long icheader;
+extern unsigned int icentries;
+extern long iccreate, icmodify;
+extern char icauth[], iccomment[];
+extern unsigned int iccode;
+extern int *extract_icon();
+extern long icon_list;
+
+typedef struct
+{
+  OBJECT obj;           /* order of this structure is very important */
+  ICONBLK icb;
+  int data[DATASIZ/2];
+  int mask[MASKSIZ/2];
+  char text[12];
+} ICONBUF;
+
+struct
+{
+  long create, modify;
+  char auth[26], comment[3][36];
+} nicinfo[7];   /* referenced by w_num */
+
+extern void _memclr( void *ptr, unsigned long size );
+
+int rsrc_ld( const char *name );
+int use_imenu( int wnum, int num );
+void rsrc_adr( int obj, OBJECT **tree );
+int trans_menu( int num, int from_neo );
+void edit_desk(void);
+int _ed_wind_type( int num );
+void map_tree( OBJECT *tree, void func( OBJECT *tree, int tmp ) );
+void fix_string( OBJECT *obj, int ind );
+void offset_objc( OBJECT *tree, int obj, int *x, int *y );
+int wind_type( int wind, int type );
+int get_icon( int wind, int ind, FSTRUCT *file );
+int edit_icon( FSTRUCT *file );
+void enable_menu( int wnum );
+void no_memory(void);
+void __bytecpy( void *src, void *dest, int len );
+int delete_icon( int wnum, int ind );
+int checksum( int wind );
+int read_icons( int num );
+int close_icons( int num );
+void bad_op(void);
+int copy_icon( int wnum, FSTRUCT *wfile, int witems, ICONBLK *ditem );
+int create_nic( int new, int wnum );
+int ic_reorder( FSTRUCT *wfile, int witems, char *reorder_on );
+int swap_icons( FSTRUCT *fs1, FSTRUCT *ib2 );
+int nic_showinf( int wnum, char *file );
+int del_conf(void);
+int nt_nic(int wnum);
+int _f_alert1( char *str );
+void free_msg(void);
+
+
+#define IMENU_ITEMS 15
+#define NUM_TEMPL   4
+unsigned char menu_xrefk[IMENU_ITEMS] = { 0x10, 0x1E, 0x18, 0x1f, 0x2f,
+    0x48, 0x11, 0x31, 0x19, 0x2D, 0x17, 0x21, 0x20, 0x13, 0x30 },
+    menu_xrefm[IMENU_ITEMS] = { IQUIT, IABOUT, IOPEN, ISHOW, ISELALL,
+    ICLSFLD, ICLSWIN, ICREATEF, IEDITPAT, IRESETI, IEDNEWIC, ICREATEN,
+    IEDELALL, IREORDER, ISAVENIC };
+
+ICIC _icic = { use_imenu, menu_xrefk, menu_xrefm, IMENU_ITEMS, trans_menu,
+    edit_desk, _ed_wind_type, offset_objc, wind_type, 0L, 0L, 
+    0L, 0L, get_icon, edit_icon,
+    enable_menu, delete_icon, close_icons, bad_op, copy_icon, ic_reorder,
+    swap_icons, nic_showinf, del_conf, nt_nic };
+ICNEO *_icneo;
+NEO_ACC *_nac;
+MOST *_z;
+GRAPHICS *graph;
+int old_itype[NUM_ICONS], old_showicon[7];
+char old_templ[13][NUM_TEMPL], old_use[7], old_mshowicon, no_xlate;
+struct Wstruct old_ws[7];
+PSTRUCT old_programs[NUM_PROGS];
+ICONSAVE old_idat[NUM_ICONS];
+OBJECT *old_menu, *imenu;
+RSHDR rshdr, *neo_rsc;
+char *rsc, not_nic[7], *_new_msgs;
+ICONBUF *memory[8], *next_new;
+long mem_len, mem_all, old_pic;
+int ewind_type[7], num_new[8], num_new0[8], neo_icons, cksum[8];
+extern char *_msg_ptr[];
+char istyle, imode, ipat, imirr, _use_8x16, idcml, iset, icoldm, tools_sep,
+    old_note;
+OBJECT *editor;
+int xarray[10], edx, edy, edw, edh, last;
+char **msg0=&_msg_ptr[0], **msgx=&_msg_ptr[IED_MSGS];
+
+long ic_main( ICNEO *_ic_neo, int close )
+{
+  int i, dum, new, cel;
+  char buf[120];
+  OBJECT *obj;
+  static char inactive[] = { ICLSFLD, ICLSWIN, ICREATEF, ICREATEN };
+  ICONBUF *icb;
+  
+  istyle=IPOINT;
+  imode=IBOTH;
+  ipat=ISOLID;
+  imirr=INONE;
+  idcml=IDRAW;
+  iset=ISET;
+  icoldm=ICOLDATA;
+  _icneo = _ic_neo;
+  _z = *(_icneo->most);
+  _nac = _icneo->nac;
+  graph = _z->graphics;
+  strcpy( buf, _z->dflt_path );
+  graf_handle( &dum, &cel, &dum, &dum );
+  _use_8x16 = cel==16;
+  strcpy( strrchr(buf,'\\')+1, "ICONEDIT.MSG" );
+  if( (*_nac->mas->read_messages)( buf, IED_MSGS, *msg0, *msgx,
+      &_msg_ptr[0], &_new_msgs ) ) return(0);
+  _icic.info_fmt = _msg_ptr[36];
+  _icic.info_fmt_sel1 = _msg_ptr[37];
+  _icic.info_fmt_sel = _msg_ptr[38];
+  strcpy( strrchr(buf,'\\')+1, "ICONEDIT.RSC" );
+  if( (i=rsrc_ld(buf)) == 1 )
+  {
+    mem_all = (long)Malloc(-1) - 32000;  /* less eventually */
+    if( mem_all < (neo_rsc=*(RSHDR **)&_icneo->global[7])->rsh_rssize ||
+        (memory[0]=next_new=Malloc(mem_all)) == NULL )
+    {
+      no_memory();
+      Mfree(rsc);
+      free_msg();
+      return(0);
+    }
+    mem_len = (65536L-neo_rsc->rsh_rssize)&0xFFFFFFFEL;
+    if( close )
+    {
+      (*_nac->bytecpy)( old_itype, _z->i_type, NUM_ICONS*sizeof(int) );
+      for( i=NUM_ICONS-1, new=-1; i>=0; i-- )
+      {
+        if( _z->i_type[i]>=D_PROG || _z->i_type[i]==PRINTER ||
+            _z->i_type[i]==CLIPBRD )
+        {
+          _z->i_type[i] = -1;
+          (*_icneo->desk)[i+1].ob_flags |= HIDETREE;
+          new = i;
+        }
+        if( _z->i_type[i]<0 && new<0 ) new = i;
+      }
+      if( new < 0 )
+      {
+        _f_alert1( _msg_ptr[2] );
+        Mfree(rsc);
+        free_msg();
+        return(0);
+      }
+      (*_nac->close_all)();
+      (*_nac->save_desktop)();
+      (*_nac->bytecpy)( old_programs, _z->programs, NUM_PROGS*sizeof(PSTRUCT) );
+      for( i=0; i<NUM_PROGS; i++ )
+        _z->programs[i].type.i = 0;
+      (*_nac->bytecpy)( old_idat, _z->idat, NUM_ICONS*sizeof(ICONSAVE) );
+      _z->i_type[new] = D_PROG;
+      _z->idat[new].c = 0;
+      rsrc_adr( IICON, &obj );
+      strcpy( _z->idat[new].label, obj[1].ob_spec.iconblk->ib_ptext );
+      _icic.icon_str = _msg_ptr[3];
+      if( _z->idat[new].ix + 12*6 > _z->maximum.w ) _z->idat[new].ix =
+          _z->maximum.w - 12*6;
+      else if( _z->idat[new].ix < 0 ) _z->idat[new].ix = 0;
+      if( _z->idat[new].iy + ICON_H+8 > _z->maximum.h ) _z->idat[new].iy =
+          _z->maximum.h - (ICON_H+8);
+      else if( _z->idat[new].iy < 0 ) _z->idat[new].iy = 0;
+      (*_icneo->desk)[new+1].ob_flags &= ~HIDETREE;
+      old_note = _z->notes[2];
+      _z->notes[2] = '\0';
+/*%      (*_nac->bytecpy)( old_use, _z->use_temp, 7 ); */
+      (*_nac->bytecpy)( old_showicon, _z->showicon, 7*sizeof(int) );
+      old_mshowicon = _z->mshowicon;
+      *(_icneo->showicon) = _z->mshowicon = 1;
+      (*_nac->bytecpy)( old_templ, _z->template, NUM_TEMPL*13 );
+      strcpy( _z->template[0], "*.NIC" );
+      strcpy( _z->template[1], "*.RSC" );
+      strcpy( _z->template[2], "*.ICN" );
+      strcpy( _z->template[3], "*.ICE" );
+      (*_nac->bytecpy)( old_ws, _z->w, 7*sizeof(struct Wstruct) );
+      for( i=0; i<7; i++ )
+        _z->w[i].place = 0;
+    }
+    rsrc_adr( IEDIT, &obj );
+    if( _use_8x16 )
+    {
+      rsrc_adr( IED2, &editor );
+      map_tree( obj, fix_string );
+    }
+    else editor = obj;
+    rsrc_adr( IICON, &obj );
+    _z->programs[0].ib = obj[1].ob_spec.iconblk;
+    old_pic = _z->pic_ptr;
+    _z->pic_ptr = 0L;
+    old_menu = *(_icneo->menu);
+    rsrc_adr( _nac->mas->rez ? IMENU : IMENU2, _icneo->menu );
+    imenu = *(_icneo->menu);
+    for( i=0; i<sizeof(inactive); i++ )
+      imenu[inactive[i]].ob_state |= DISABLED;
+    menu_bar( imenu, 1 );
+    num_new[0] = 0;
+    _memclr( &memory[1], 7*sizeof(memory[0]) );
+    _memclr( &num_new[1], 7*sizeof(num_new[0]) );
+    for( icb=(ICONBUF *)((long)memory[0]+mem_len); 
+        icb<(ICONBUF *)((long)memory[0]+mem_all); icb++ )
+      *(ICONBUF **)icb = (ICONBUF *)0L;
+    neo_icons = *(_icneo->user_icons) + D_PROG;
+    cksum[0] = checksum(-1);
+    rsrc_adr( IABOUTTX, &obj );
+    form_center( obj, &dum, &dum, &dum, &dum );
+    rsrc_adr( NICINFO, &obj );
+    form_center( obj, &dum, &dum, &dum, &dum );
+    if( close ) form_dial( FMD_FINISH, 0, 0, 0, 0, _z->maximum.x, 
+        _z->maximum.y, _z->maximum.w, _z->maximum.h );
+    return( (long)&_icic );
+  }
+  else if( !i ) _f_alert1( _msg_ptr[4] );
+  free_msg();
+  return(0);
+}
+
+void _linea9(void)
+{
+  (*graph->show_mouse)();
+}
+void _lineaa(void)
+{
+  (*graph->hide_mouse)();
+}
+
+void _arrow(void)
+{
+  graf_mouse( ARROW, 0L );
+}
+
+void _bee(void)
+{
+  graf_mouse( HOURGLASS, 0L );
+}
+
+int _f_alert1( char *str )
+{
+  return( form_alert( 1, str ) );
+}
+
+void kick( char *path )
+{
+  char temp[]="x:\\*.*";
+
+  temp[0] = *path;
+  Fsfirst( temp, 0x37 );
+}
+
+#define KEY_START 0x37
+char key;
+void encrypt( void *from, void *to, long size )
+{
+  while( --size >= 0 )
+  {
+    *((char *)to)++ = *((char *)from)++ ^ key;
+    key += 0x21;
+  }
+}
+
+typedef struct
+{
+  unsigned char size_x, size_y;
+  unsigned char xicon, yicon, banx, bany;
+  unsigned char xchar, ychar;
+  unsigned char planes;
+  unsigned char type;
+  char string[12];
+  long colors;
+  long data;
+} ICONFILE;
+
+typedef union
+{
+  unsigned char i;
+  struct
+  {
+    folder:1;
+    file:1;
+    dflt:6;
+  } type;
+} ICON_TYPE;
+
+void bad_op(void)
+{
+  _f_alert1( _msg_ptr[5] );
+}
+
+void fixx( int *i )
+{
+  *i = ((*i&0xFF)<<3) + (*i>>8);
+}
+
+void fixy( int *i )
+{
+  *i = ((*i&0xFF)<<(_use_8x16?4:3)) + (*i>>8);
+}
+
+void obfix( OBJECT *tree, int ind )
+{
+  fixx( &tree[ind].ob_x );
+  fixx( &tree[ind].ob_width );
+  fixy( &tree[ind].ob_y );
+  fixy( &tree[ind].ob_height );
+}
+
+int chknum;
+
+void chksm( char *place, int *chk, int size )
+{
+  while( size-- ) *chk += *place++ * (size+chknum);
+  chknum++;
+}
+
+void chksmstr( char *place, int *chk )
+{
+  chksm( place, chk, strlen(place)+1 );
+}
+
+int checksum( int wind )
+{
+  int i, chk=0;
+  FSTRUCT f;
+  ICONBLK *icb;
+  BITBLK *bb;
+  
+  i = 0;
+  chknum = 1;
+  while( get_icon( wind, i, &f ) )
+  {
+    chksm( (char *)(icb = f.ib), &chk, sizeof(ICONBLK) );
+    chksm( (char *)icb->ib_pdata, &chk, DATASIZ );
+    chksm( (char *)icb->ib_pmask, &chk, MASKSIZ );
+    chksm( icb->ib_ptext, &chk, 12 );
+    i++;
+  }
+  if( wind<0 )
+  {
+    chksm( (char *)(bb = (*_icneo->desk)[DESKPAT].ob_spec.bitblk), &chk,
+        sizeof(BITBLK) );
+    chksm( (char *)bb->bi_pdata, &chk, 16*sizeof(int) );
+  }
+  else
+  {
+    chksmstr( nicinfo[wind].auth, &chk );
+    chksmstr( nicinfo[wind].comment[0], &chk );
+    chksmstr( nicinfo[wind].comment[1], &chk );
+    chksmstr( nicinfo[wind].comment[2], &chk );
+  }
+  return(chk);
+}
+
+void __bytecpy( void *dest, void *src, int len )
+{
+  (*_nac->bytecpy)( dest, src, len );
+}
+
+void no_memory(void)
+{
+  _f_alert1( _msg_ptr[6] );
+}
+
+void _spf(char *buf, char *fmt, ...) {
+  (*_nac->mas->dopf)(buf, fmt, (unsigned int *)&...);
+}
+
+void fix_string( OBJECT *obj, int ind )
+{
+  int i;
+  
+  i = obj[ind].ob_type&0xff;
+  if( i!=G_BOX && i!=G_IBOX && i!=G_BOXCHAR && i!=G_IMAGE )
+  {
+    editor[ind].ob_type = obj[ind].ob_type;
+    editor[ind].ob_spec = obj[ind].ob_spec;
+  }
+}
+
+void map_tree( OBJECT *tree, void func( OBJECT *tree, int tmp ) )
+{
+  int tmp1, this;
+  
+  tmp1 = this = 0;
+  while (this != -1)
+    if (tree[this].ob_tail != tmp1)
+    {
+      tmp1 = this;
+      (*func)( tree, tmp1 );
+      this = tree[tmp1].ob_head;
+      if (this == -1) this = tree[tmp1].ob_next;
+    }
+    else
+    {
+      tmp1 = this;
+      this = tree[tmp1].ob_next;
+    }
+}
+
+long add;
+
+void rsc_incr( long *loc )
+{
+  *loc += add;
+}
+
+int long_rsc( RSHDR *rsc )
+{
+  return ((RSHDR2 *)rsc)->rsh_vrsn == X_LONGRSC;
+}
+
+void fix_rsc( RSHDR *rshdr, char *rsc, void func( long *l ) )
+{
+  unsigned i, j, siz;
+  char *ptr, is_new;
+  RSHDR2 *rshdr2;
+
+  if( (is_new = long_rsc(rshdr)) != 0 ) siz = sizeof(RSHDR2);
+  else siz = sizeof(RSHDR);
+  rshdr2 = ((RSHDR2 *)rshdr);
+  for( ptr=(is_new?rshdr2->rsh_object:rshdr->rsh_object)+rsc-siz,
+      i=(is_new?rshdr2->rsh_nobs:rshdr->rsh_nobs)+1; --i; ptr+=sizeof(OBJECT) )
+    if( (j=((OBJECT *)ptr)->ob_type&0xff) != G_BOXCHAR &&
+        j != G_IBOX && j != G_BOX ) func(
+        (long *)&((OBJECT *)ptr)->ob_spec.free_string );
+  for( ptr=(is_new?rshdr2->rsh_tedinfo:rshdr->rsh_tedinfo)+rsc-siz,
+      i=(is_new?rshdr2->rsh_nted:rshdr->rsh_nted)+1; --i; ptr+=sizeof(TEDINFO) )
+  {
+    func( (long *)&((TEDINFO *)ptr)->te_ptext );
+    func( (long *)&((TEDINFO *)ptr)->te_ptmplt );
+    func( (long *)&((TEDINFO *)ptr)->te_pvalid );
+  }
+  for( ptr=(is_new?rshdr2->rsh_iconblk:rshdr->rsh_iconblk)+rsc-siz,
+      i=(is_new?rshdr2->rsh_nib:rshdr->rsh_nib)+1; --i; ptr+=sizeof(ICONBLK) )
+  {
+    func( (long *)&((ICONBLK *)ptr)->ib_pmask );
+    func( (long *)&((ICONBLK *)ptr)->ib_pdata );
+    func( (long *)&((ICONBLK *)ptr)->ib_ptext );
+  }
+  for( ptr=(is_new?rshdr2->rsh_bitblk:rshdr->rsh_bitblk)+rsc-siz,
+      i=(is_new?rshdr2->rsh_nbb:rshdr->rsh_nbb)+1; --i; ptr+=sizeof(BITBLK) )
+    func( (long *)&((BITBLK *)ptr)->bi_pdata );
+  for( ptr=(is_new?rshdr2->rsh_frstr:rshdr->rsh_frstr)+rsc-siz,
+      i=(is_new?rshdr2->rsh_nstring:rshdr->rsh_nstring)+1; --i; ptr+=sizeof(long) )
+    func( (long *)ptr );
+  for( ptr=(is_new?rshdr2->rsh_trindex:rshdr->rsh_trindex)+rsc-siz,
+      i=(is_new?rshdr2->rsh_ntree:rshdr->rsh_ntree)+1; --i; ptr+=sizeof(long) )
+    func( (long *)ptr );
+}
+
+int rsrc_ld( const char *name )
+{
+  int hand, noerr=-1;
+  unsigned i;
+  char *ptr, is_new;
+  
+  if( (hand = Fopen(name,0)) < 0 ) return(0);
+  if( Fread( hand, sizeof(RSHDR), &rshdr ) == sizeof(RSHDR) &&
+      (rsc = (char *)Malloc(add=rshdr.rsh_rssize-sizeof(RSHDR))) != 0 && 
+      Fread( hand, add, rsc ) == add )
+  {
+    is_new = long_rsc(&rshdr);
+    add = (long)rsc - (is_new ? sizeof(RSHDR2) : sizeof(RSHDR));
+    fix_rsc( &rshdr, rsc, rsc_incr );
+    for( ptr=(is_new?((RSHDR2 *)&rshdr)->rsh_trindex:rshdr.rsh_trindex)+
+        rsc-(is_new ? sizeof(RSHDR2) : sizeof(RSHDR)), i=0;
+        i<(is_new?((RSHDR2 *)&rshdr)->rsh_ntree:rshdr.rsh_ntree); i++, ptr+=sizeof(long) )
+      map_tree( *(OBJECT **)ptr, obfix );
+    noerr = 1;
+  }
+  else no_memory();
+  Fclose(hand);
+  return(noerr);
+}
+
+void rsrc_adr( int obj, OBJECT **tree )
+{
+  *tree = ((OBJECT **)(rshdr.rsh_trindex+rsc-sizeof(RSHDR)))[obj];
+}
+
+int trans_menu( int num, int from_neo )
+{
+  static unsigned char neo[] = { OPEN, SHOWINF, CLOSEFLD, CLOSEWIN,
+      CREATE, SELALL, UPDATE, REORDER };
+  static unsigned char iced[] = { IOPEN, ISHOW, ICLSFLD, ICLSWIN,
+      ICREATEF, ISELALL, IEDUPDAT, IREORDER };
+  int i;
+  
+  if( !no_xlate ) for( i=0; i<sizeof(neo); i++ )
+    if( from_neo )
+    {
+      if( num==neo[i] ) return(iced[i]);
+    }
+    else if( num==iced[i] ) return(neo[i]);
+  return(0);
+}
+
+void offset_objc( OBJECT *tree, int obj, int *x, int *y )
+{
+  register int parent=1, lastobj;
+  
+  *x = *y = 0;
+  do
+  {
+    if( parent )
+    {
+      parent=0;
+      *x += tree[obj].ob_x;
+      *y += tree[obj].ob_y;
+    }
+    if( tree[obj = tree[lastobj=obj].ob_next].ob_tail == lastobj ) parent++;
+  }
+  while( obj >= 0 && lastobj );
+}
+
+char no_color, ed_pat, sep_sw;
+unsigned char pixel[ICON_H][ICON_W], tmppix[ICON_H][ICON_W], 
+    previous[ICON_H][ICON_W];
+int pix_w, pix_h, h_off, v_off, x_max, y_max, x0, y0,
+    pall[4] = { 0, 3, 1, 2 };
+long pattrn[4][8] = {
+     { 0L, 0L },
+     { 0xAAAA0000L, 0xAAAA0000L, 0xAAAA0000L, 0xAAAA0000L, 0xAAAA0000L, 0xAAAA0000L,
+       0xAAAA0000L, 0xAAAA0000L },
+     { 0xAAAA5555L, 0XAAAA5555L, 0xAAAA5555L, 0XAAAA5555L, 0xAAAA5555L, 0XAAAA5555L,
+       0xAAAA5555L, 0XAAAA5555L },
+     { 0xFFFFAAAAL, 0xFFFFAAAAL, 0xFFFFAAAAL, 0xFFFFAAAAL, 0xFFFFAAAAL, 0xFFFFAAAAL,
+       0xFFFFAAAAL, 0xFFFFAAAAL } };
+
+void setcol( char color )
+{
+  if( ed_pat || !no_color )
+  {
+    (*graph->colbits)( pall[color] );
+    (*graph->pats)( 0L, 1 );
+  }
+  else
+  {
+    (*graph->colbits)(1);
+    (*graph->pats)( (int *)pattrn[color], 3 );
+  }
+}
+
+void draw( int x, int y, char color )
+{
+  setcol( color );
+  (*graph->x1y1val)( x, y, x+pix_w-1, y+pix_h-1 );
+  (*graph->wmode0)();
+  (*graph->gr_box)();
+}
+
+void display(void)
+{
+  int i, j, x, y;
+  char md;
+  
+  md = imode-IDATA+1;
+  _lineaa();
+  for( y=y0, i=0; i<y_max; i++, y+=v_off )
+    for( x=x0, j=0; j<x_max; j++, x+=h_off )
+      draw( x, y, pixel[i][j] & md );
+  _linea9();
+}
+
+void sample(void)
+{
+  objc_draw( editor, IEDDESK, 1, edx, edy, edw, edh );
+  if( !ed_pat ) objc_draw( editor, IEDWIN, 1, edx, edy, edw, edh );
+}
+
+void redo_sample(void)
+{
+  unsigned int i, k, l, data, mask, *ptr;
+  ICONBLK *i_ptr;
+  
+  if( !ed_pat )
+  {
+    i_ptr = (ICONBLK *)editor[IEDWIC1].ob_spec.iconblk;
+    for( l=i=0; i<ICON_H<<1; i++ )
+    {
+      for( data=mask=k=0; k<16; k++, l++ )
+      {
+        data = (data<<1) | (pixel[0][l] & 1);
+        mask = (mask<<1) | ((pixel[0][l] & 2) >> 1);
+      }
+      i_ptr->ib_pdata[i] = data;
+      i_ptr->ib_pmask[i] = mask;
+    }
+  }
+  else
+  {
+    ptr = (unsigned int *)((*_icneo->desk)[DESKPAT].ob_spec.bitblk->bi_pdata);
+    for( i=0; i<16; i++ )
+    {
+      for( data=k=0; k<16; k++ )
+        data = (data<<1) | pixel[i][k];
+      *ptr++ = data;
+    }
+  }
+  sample();
+}
+
+void buttons( int flag, int x1, int y1, int w, int h )
+{
+  int i;
+  static int oflag=-1;
+  
+  _lineaa();
+  graf_mouse( flag ? POINT_HAND : ARROW, 0L );
+  xarray[2] = (xarray[0] = x0 + h_off*x1 - 1) + w*h_off;
+  xarray[3] = (xarray[1] = y0 + v_off*y1 - 1) + h*v_off;
+  (*graph->wmode2)();
+  (*_nac->blank_box)( xarray );
+  _linea9();
+  editor[IEDDIC1].ob_spec.iconblk->ib_char = 
+      editor[IEDDIC1+1].ob_spec.iconblk->ib_char &= 0xFF00;
+  if( !ed_pat )
+  {
+    if( flag==1 ) editor[IEDDIC1].ob_spec.iconblk->ib_char = 
+        editor[IEDDIC1+1].ob_spec.iconblk->ib_char |= 'X';
+    if( flag==1 || oflag==1 ) sample();
+    oflag = flag;
+  }
+}
+
+int get_mouse( int *x, int *y, int *b, int *mx, int *my )
+{
+  int mk;
+  
+  graf_mkstate( mx, my, b, &mk );
+  *x = (*mx - x0) / h_off;
+  *y = (*my - y0) / v_off;
+  if( mk & 3 ) *b |= 2;
+  return( *mx >= x0 && *my >= y0 && *x < x_max && *y < y_max );
+}
+
+int new_rbox( int x, int y, Rect *rbox, int xor )
+{
+  graf_mouse( THIN_CROSS, 0L );
+  if( (*_nac->rubber_box)( x0 + x*h_off -1+2, y0 + y*v_off -1+2, rbox, 0 ) )
+  {
+    if( (rbox->w = (rbox->w+(h_off>>1))/h_off) != 0 && 
+        (rbox->h = (rbox->h+(v_off>>1))/v_off) != 0 )
+    {
+      rbox->x = (rbox->x-x0+(h_off>>1))/h_off;
+      rbox->y = (rbox->y-y0+(v_off>>1))/v_off;
+      if( rbox->x < 0 )
+      {
+        rbox->w += rbox->x;
+        rbox->x = 0;
+      }
+      if( rbox->y < 0 )
+      {
+        rbox->h += rbox->y;
+        rbox->y = 0;
+      }
+      if( rbox->x + rbox->w > x_max ) rbox->w = x_max - rbox->x;
+      if( rbox->y + rbox->h > y_max ) rbox->h = y_max - rbox->y;
+      if( xor ) buttons( 2, rbox->x, rbox->y, rbox->w, rbox->h );
+      else _arrow();
+      return(2);
+    }
+  }
+  _arrow();
+  return(0);
+}
+
+int grab( int *x, int *y, int w, int h, int flag )
+{
+  int bx, by, nx, ny;
+  Rect bounds;
+  
+  if( *x >= xarray[0] && *x <= xarray[2] && *y >= xarray[1] &&
+      *y <= xarray[3] )
+  {
+    bounds.x = x0;
+    bounds.y = y0;
+    bounds.w = x_max * h_off;
+    bounds.h = y_max * v_off;
+    if( flag==2 )
+    {
+      bounds.x -= w=(w-1) * h_off;
+      bounds.y -= h=(h-1) * v_off;
+      bounds.w += w<<1;
+      bounds.h += h<<1;
+    }
+    graf_mouse( FLAT_HAND, 0L );
+    if( graf_dragbox( xarray[2]-xarray[0], xarray[3]-xarray[1],
+        xarray[0], xarray[1], bounds.x, bounds.y, bounds.w, bounds.h,
+        &bx, &by ) )
+    {
+      nx = bx+(h_off>>1)-x0;
+      ny = by+(v_off>>1)-y0;
+      if( nx<0 ) nx -= h_off - 1;
+      if( ny<0 ) ny -= v_off - 1;
+      *x = nx/h_off;
+      *y = ny/v_off;
+      return(1);
+    }
+    graf_mouse( POINT_HAND, 0L );
+  }
+  return(0);
+}
+
+void drwpix( int newx, int newy, char num, char col )
+{
+  pixel[newy][newx] = tmppix[newy][newx] = num;
+  draw( x0+newx*h_off, y0+newy*v_off, col );
+}
+
+void mirror( int x, int y )
+{
+  unsigned char num, col;
+  int x1, y1;
+  
+  x1 = x_max-x-1;
+  y1 = y_max-y-1;
+  col = (num = pixel[y][x])&(imode-IDATA+1);
+  _lineaa();
+  draw( x0+x*h_off, y0+y*v_off, col );
+  if( imirr == ILR || imirr == I4WAY ) drwpix( x1, y, num, col );
+  if( imirr == ITB || imirr == I4WAY ) drwpix( x, y1, num, col );
+  if( imirr == I4WAY ) drwpix( x1, y1, num, col );
+  _linea9();
+}
+
+void set_pixel( int x, int y, int b )
+{
+  unsigned char mask, or, set;
+  
+  set = iset==ISET;
+  switch( ipat )
+  {
+    case ICHK1:
+      if( (x&1) != (y&1) ) set ^= 1;
+      break;
+    case ICHK2:
+      if( (x&1) == (y&1) ) set ^= 1;
+      break;
+    case IVERT1:
+      if( x&1 ) set ^= 1;
+      break;
+    case IVERT2:
+      if( !(x&1) ) set ^= 1;
+  }
+  mask = imode-IDATA+1;
+  or = set ? 3&mask : 0;
+  if( iset==ITOGGLE ) or = (pixel[y][x]&mask)^mask;
+  else if( imode == IBOTH )
+    if( istyle==IPOINT )
+      if( ipat==ISOLID )
+      {
+        if( ((b&2) == 0) == !set ) last = 0;
+        if( last >= 0 ) or = last;
+        else if( (or = (pixel[y][x]&3) + 1) == 4 ) or = 1;
+        last = or;
+      }
+      else
+        if( ((b&2) == 0) == !set ) or = 0;
+        else if( last >= 0 ) or = last;
+        else
+        {
+          if( (or = (pixel[y][x]&3) + 1) == 4 ) or = 1;
+          last = or;
+        }
+    else
+    {
+      if( ((b&2) == 0) == !set ) or = 0;
+      else or = 3;
+    }
+  else if( b&2 ) or ^= 3&mask;
+  pixel[y][x] = tmppix[y][x] = (pixel[y][x]&~mask)|or;
+  mirror( x, y );
+}
+
+void do_disp( int move, Rect mbox )
+{
+  if( move ) buttons( 0, mbox.x, mbox.y, mbox.w, mbox.h );
+  display();
+  if( move ) buttons( move, mbox.x, mbox.y, mbox.w, mbox.h );
+}
+
+void redo_prev(void)
+{
+  __bytecpy( previous, pixel, PIXELS );
+}
+
+void shift( int move, Rect mbox, int xoff, int yoff )
+{
+  int i, j, k, l, mask;
+  Rect box, box2;
+  
+  redo_prev();
+  __bytecpy( tmppix, pixel, PIXELS );
+  mask = imode-IDATA+1;
+  for( j=0; j<y_max; j++ )
+    for( i=0; i<x_max; i++ )
+    {
+      if( (k = i+xoff) < 0 ) k = x_max-1;
+      else if( k >= x_max ) k = 0;
+      if( (l = j+yoff) < 0 ) l = y_max-1;
+      else if( l >= y_max ) l = 0;
+      pixel[l][k] = (pixel[l][k]&~mask) | (tmppix[j][i]&mask);
+    }
+  redo_sample();
+  if( move ) buttons( 0, mbox.x, mbox.y, mbox.w, mbox.h );
+  box.x = box2.x = x0;
+  box.y = box2.y = y0;
+  box.w = h_off*x_max - 1;
+  box.h = v_off*y_max - 1;
+  if( xoff )
+  {
+    box.w -= h_off;
+    box2.x += h_off;
+  }
+  else
+  {
+    box.h -= v_off;
+    box2.y += v_off;
+  }
+  box2.w = box.w;
+  box2.h = box.h;
+  _lineaa();
+  if( xoff>0 || yoff>0 ) (*_nac->blit)( &box, &box2, 0, 3, 0L );
+  else (*_nac->blit)( &box2, &box, 0, 3, 0L );
+  i = xoff>=0 ? 0 : x_max-1;
+  j = yoff>=0 ? 0 : y_max-1;
+  xoff = abs(xoff);
+  yoff = abs(yoff);
+  for( l=0; l<x_max; l++ )
+  {
+    draw( x0+i*h_off, y0+j*v_off, pixel[j][i] & mask );
+    j += xoff;
+    i += yoff;
+  }
+  _linea9();
+  if( move ) buttons( move, mbox.x, mbox.y, mbox.w, mbox.h );
+}
+
+void ed_color( unsigned int *old, unsigned int new )
+{
+  unsigned int i, j;
+  
+  i = ed_pat && icoldm==ICOLDATA || !ed_pat && icoldm!=ICOLDATA ? 
+      *old&0xf : *old>>4;
+  if( i != new )
+  {
+    editor[new+IEDCOL0].ob_spec.obspec.character = '\x8';
+    if( ed_pat )
+    {
+      j = (*_icneo->desk)[DESKPAT].ob_spec.bitblk->bi_color;
+      j = (*_icneo->desk)[DESKPAT].ob_spec.bitblk->bi_color = icoldm==ICOLDATA ?
+          (j&0xf0)|new : (j&0xf)|(new<<4);
+    }
+    else
+    {
+      j = (unsigned)editor[IEDDIC1].ob_spec.iconblk->ib_char>>8;
+      editor[IEDDIC1].ob_spec.iconblk->ib_char = 
+          editor[IEDDIC1+1].ob_spec.iconblk->ib_char = 
+          editor[IEDDIC1+1].ob_spec.iconblk->ib_char&0xFF | 
+          ((j = icoldm==ICOLDATA ? (j&0xf)|(new<<4) : (j&0xf0)|new)<<8);
+    }
+    if( *old != 0xFFFF )
+    {
+      editor[i+IEDCOL0].ob_spec.obspec.character = '\0';
+      if( !tools_sep || sep_sw )
+      {
+        objc_draw( editor, i+IEDCOL0, 0, edx, edy, edw, edh );
+        objc_draw( editor, new+IEDCOL0, 0, edx, edy, edw, edh );
+      }
+      if( !sep_sw ) redo_sample();
+    }
+    *old = j;
+  }
+}
+
+#define IMPOSSIBLE 100
+
+extern long StkLim;
+
+void seedfill( int xx, int yy, int col, int old )
+{
+  int last, last1, last_1, last_y;
+  int y, x, xinc, yinc, i, j, mask;
+  unsigned char *p;
+  
+  mask = imode-IDATA+1;
+  if( xx<0 || xx>=x_max || yy<0 || yy>=y_max || (tmppix[yy][xx]&mask) != old ||
+      (tmppix[yy][xx]&mask)==col ) return;
+  if( (long)&mask < StkLim )
+  {
+    Crawio(7);
+    return;
+  }
+  xinc = 1;
+  yinc = 1;
+  last_1 = xx;
+  last1 = last_y = IMPOSSIBLE;
+  for(;;)
+  {
+    y = yinc>0 || xinc<0 ? yy : yy-1;
+    last = xinc>0 ? last1 : last_1;
+    x = xinc>0 ? xx : xx-1;
+      while( y>=0 && y<y_max )
+      {
+        i = x;
+        while( i>=0 && i<x_max && (*(p=&tmppix[y][i])&mask) == old )
+        {
+          *p = *p&~mask | col;
+          i += xinc;
+        }
+        if( last != IMPOSSIBLE && i!=last )
+          if( xinc>0 )
+            if( i<last )
+              for( j=i+1; j<last; j++ )
+                seedfill( j, y, col, old );
+            else
+              for( j=last+1; j<i; j++ )
+                seedfill( j, y-yinc, col, old );
+          else 
+            if( i>last )
+              for( j=i-1; j>last; j-- )
+                seedfill( j, y, col, old );
+            else
+              for( j=last-1; j>i; j-- )
+                seedfill( j, y-yinc, col, old );
+        if( y==yy )
+          if( xinc > 0 ) last1 = i;
+          else last_1 = i;
+        last = i;
+        if( i!=x && last_y!=IMPOSSIBLE &&
+            (yinc>0 && y>last_y || yinc<0 && y<last_y) ) 
+            seedfill( x-xinc, y, col, old );
+        if( i==x && (last_y==IMPOSSIBLE || 
+            yinc>0 && y>=last_y || yinc<0 && y<=last_y) ) break;
+        y += yinc;
+      }
+    if( xinc>0 )
+    {
+      xinc = -1;
+      last_y = y-yinc;
+    }
+    else if( yinc>0 )
+    {
+      yinc = -1;
+      xinc = 1;
+      last_y = IMPOSSIBLE;
+    }
+    else return;
+  }
+}
+
+void waitbut(void)
+{
+  int dum, b;
+  
+  do
+    graf_mkstate( &dum, &dum, &b, &dum );
+  while( b&1 );
+}
+
+void _draw_box( int *box )
+{
+  int ln;
+  
+  ln = (*graph->get_lnmask)();
+  (*graph->draw_bx)(box);
+  (*graph->set_lnmask)(ln);
+}
+
+void draw_line( int xs, int ys, int xf, int yf, int flag )
+{
+  int dx, dy, x, y, yinc, inc=0, i, dif;
+  
+  dx = xf-xs;
+  dy = yf-ys;
+  y = !dy ? 0 : (dy>0 ? 1 : -1);
+  x = !dx ? 0 : (dx>0 ? 1 : -1);
+  if( (yinc = abs(dx) < abs(dy)) != 0 )
+  {
+    i = y;
+    dif = x*(dy-i)/2;
+  }
+  else
+  {
+    i = x;
+    dif = y*(dx-i)/2;
+  }
+  x = xs;
+  y = ys;
+  (*graph->wmode2)();
+  for(;;)
+  {
+    xarray[4]=xarray[2] = (xarray[6]=xarray[0] = x0 + h_off*x - 1)
+        + h_off;
+    xarray[7]=xarray[5] = (xarray[3]=xarray[1] = y0 + v_off*y - 1)
+        + v_off;
+    _draw_box( xarray );
+    if( flag )
+    {
+      set_pixel( x, y, flag-100 );
+      (*graph->wmode2)();
+    }
+    if( x==xf && y==yf ) return;
+    inc += i;
+    if( yinc )
+    {
+      y += i;
+      x = (inc*dx+dif)/dy + xs;
+    }
+    else
+    {
+      x += i;
+      y = (inc*dy+dif)/dx + ys;
+    }
+  }
+}
+
+void fix_mouse( int *x, int *y )
+{
+  if( *x<0 ) *x=0;
+  if( *y<0 ) *y=0;
+  if( *x>=x_max ) *x = x_max-1;
+  if( *y>=y_max ) *y = y_max-1;
+}
+
+void set_line( int x0, int y0 )
+{
+  int xinc, yinc, x, y, ox, oy, b, mx, my, state=0, i, mask=0;
+  static int masks[] = { 0xCCCC, 0x6666, 0x3333, 0x9999 };
+  
+  ox = x0;
+  oy = y0;
+  graf_mouse( OUTLN_CROSS, 0L );
+  if( !get_mouse( &x, &y, &b, &mx, &my ) ) fix_mouse( &x, &y );
+  (*graph->set_lnmask)(masks[0]);
+  while( b & 1 )
+  {
+    _lineaa();
+    if( state ) draw_line( x0, y0, ox, oy, 0 );
+    else state++;
+    draw_line( x0, y0, x, y, 0 );
+    _linea9();
+    ox = x;
+    oy = y;
+    for(;;)
+    {
+      if( !get_mouse( &x, &y, &b, &mx, &my ) ) fix_mouse( &x, &y );
+      if( b&1 && x==ox && y==oy )
+      {
+        for( i=0; i<4; i++ )
+          Vsync();
+        _lineaa();
+        draw_line( x0, y0, ox, oy, 0 );
+        if( ++mask == 4 ) mask = 0;
+        (*graph->set_lnmask)(masks[mask]);
+        draw_line( x0, y0, ox, oy, 0 );
+        _linea9();
+      }
+      else break;
+    }
+  }
+  if( state )
+  {
+    _lineaa();
+    draw_line( x0, y0, ox, oy, 100+b );
+    redo_sample();
+    _linea9();
+  }
+  _arrow();
+}
+
+void color_it( int i, unsigned int *color )
+{
+  if( i != icoldm )
+  {
+    icoldm = i;
+    if( !ed_pat && i==ICOLDATA || ed_pat && i!=ICOLDATA )
+    {
+      i = *color>>4;
+      *color = ((*color&0xf)<<4)|(*color&0xf);
+    }
+    else
+    {
+      i = *color&0xf;
+      *color = (*color&0xf0)|(*color>>4);
+    }
+    if( tools_sep ) sep_sw++;
+    ed_color( color, i );
+    sep_sw = 0;
+  }
+}
+
+void set_toggle(void)
+{
+  int i;
+  
+  i = editor[ITOGGLE].ob_state&DISABLED;
+  if( ipat!=ISOLID && !i )
+  {
+    if( iset==ITOGGLE )
+    {
+      editor[iset=ISET].ob_state |= SELECTED;
+      if( !tools_sep ) objc_draw( editor, ISET, 0, edx, edy, edw, edh );
+    }
+    editor[ITOGGLE].ob_state = DISABLED;
+    if( !tools_sep ) objc_draw( editor, ITOGGLE, 0, edx, edy, edw, edh );
+  }
+  else if( ipat==ISOLID && i )
+  {
+    editor[ITOGGLE].ob_state &= ~DISABLED;
+    if( !tools_sep ) objc_draw( editor, ITOGGLE, 0, edx, edy, edw, edh );
+  }
+}
+
+void _from_filename( char *src, char *dest, int flg )
+{
+  (*_icneo->from_filename)( src, dest, flg );
+}
+
+void i_copy( ICONBLK *to, ICONBLK *from )
+{
+  __bytecpy( to->ib_pmask, from->ib_pmask, MASKSIZ );
+  __bytecpy( to->ib_pdata, from->ib_pdata, DATASIZ );
+  to->ib_char  = from->ib_char;
+  to->ib_xchar = from->ib_xchar;
+  to->ib_ychar = from->ib_ychar;
+}
+
+void _pad_it( char *ptr )
+{
+  int j;
+  
+  j = strlen(ptr);
+  while( j<11 ) ptr[j++] = ' ';
+  ptr[11] = '\0';
+}
+
+int edit_icon( FSTRUCT *file )
+{
+  int i, j, k, x, y, b, *iptr, oh, temp1, temp2, nm,
+      om, mx, my, move=0, nx, ny, l;
+  unsigned int data, mask, color=0xFFFF;
+  static char pixes[3][2][2] = { 3, 3, 6, 5, 6, 3, 10, 5, 7, 7, 12, 12 };
+  ICONBLK *i_ptr, *i_ptr0;
+  BITBLK *pptr;
+  OBJECT *obj, *obj2;
+  Rect old, mbox={0};
+  char temp[200], c, *old_mstr;
+  unsigned int old_pat[16], old_col, ed_obj=0;
+  
+  if( (ed_pat = file==0L) == 0 ) i_ptr0 = file->ib;
+  i=0;
+  no_color = graph->work_out[13] < 4;
+  if( _use_8x16 ) i=2;
+  else if( graph->v_x_max >= 640 ) i=1;
+  h_off = (pix_w = pixes[i][ed_pat][0]) + 1;
+  v_off = (pix_h = pixes[i][ed_pat][1]) + 1;
+  x_max = ed_pat ? 16 : ICON_W;
+  y_max = ed_pat ? 16 : ICON_H;
+  i = j = editor[IEDDISP].ob_x;
+  i += (editor[IEDDISP].ob_width = (x_max+2) * h_off - 1);
+  editor[IEDDISP].ob_height = (y_max+2) * v_off - 1;
+  editor[IEDINVIS].ob_x = i += j;
+  i += editor[IEDINVIS].ob_width + j;
+  k = editor[IEDTLBX].ob_width + j;
+  if( (tools_sep = i+k>graph->v_x_max) == 0 )
+  {
+    editor[IEDTLBX].ob_x = i;
+    editor[IEDTLBX].ob_flags &= ~HIDETREE;
+    editor[IEDTOOLS].ob_flags |= HIDETREE;
+    i += k;
+  }
+  else
+  {
+    offset_objc( editor, IDRAW, &temp1, &temp2 );
+    editor[IEDTLBX].ob_x = temp1 - editor[0].ob_x - 1;
+    editor[IEDTOOLS].ob_flags &= ~HIDETREE;
+    editor[IEDTLBX].ob_flags |= HIDETREE;
+  }
+  editor[0].ob_width = i;
+  editor[IEDDESK].ob_type = G_USERDEF;
+  editor[IEDDESK].ob_spec = (*_icneo->desk)[0].ob_spec;
+  iptr = (pptr=(*_icneo->desk)[DESKPAT].ob_spec.bitblk)->bi_pdata;
+  editor[IEDATT].ob_flags |= HIDETREE;
+  if( ed_pat )
+  {
+    editor[IEDWIN].ob_flags |= HIDETREE;
+    old = *(Rect *)&editor[IEDDESK].ob_x;
+    editor[IEDDESK].ob_x = j;
+    editor[IEDDESK].ob_y = (j=editor[IEDDISP].ob_y)+editor[IEDDISP].ob_height+j;
+    editor[IEDDESK].ob_width = editor[IEDDISP].ob_width;
+    editor[IEDDIC1].ob_flags = editor[IEDDIC1+1].ob_flags |= HIDETREE;
+    editor[IEDDMB].ob_flags |= HIDETREE;
+    editor[IEDLET].ob_flags |= HIDETREE;
+    editor[IEDBLUR].ob_flags = editor[IEDDTOM].ob_flags |= HIDETREE;
+    oh = editor[IDRAW-1].ob_height;
+    editor[IDRAW-1].ob_height = editor[IEDDMB].ob_height;
+    if( idcml == IEDLET )
+    {
+      editor[IEDLET].ob_state &= ~SELECTED;
+      editor[idcml=IDRAW].ob_state |= SELECTED;
+    }
+    om = imode;
+    imode = IDATA;
+    editor[IEDPATRN].ob_flags &= ~HIDETREE;
+    editor[IEDPATRN].ob_x = editor[IEDBLUR].ob_x;
+    ed_color( &color, (unsigned)pptr->bi_color>>(icoldm==ICOLDATA?0:4)&0xf );
+    color = pptr->bi_color;
+    old_mstr = editor[ICOLMASK].ob_spec.tedinfo->te_ptext;
+    editor[ICOLMASK].ob_spec.tedinfo->te_ptext = _msg_ptr[7];
+  }
+  else
+  {
+    i_ptr = editor[IEDDIC1].ob_spec.iconblk;
+    editor[IEDWIC1].ob_spec.iconblk = i_ptr;
+    editor[IEDWIC1+1].ob_spec.iconblk = editor[IEDDIC1+1].ob_spec.iconblk;
+    __bytecpy( editor[IEDDIC1+1].ob_spec.iconblk->ib_pdata = 
+        i_ptr->ib_pdata, i_ptr0->ib_pdata, DATASIZ );
+    __bytecpy( editor[IEDDIC1+1].ob_spec.iconblk->ib_pmask = 
+        i_ptr->ib_pmask, i_ptr0->ib_pmask, MASKSIZ );
+    editor[IEDDIC1+1].ob_spec.iconblk->ib_char = i_ptr->ib_char = 
+        i_ptr0->ib_char & 0xFF00;
+    editor[IEDDIC1+1].ob_spec.iconblk->ib_xchar = i_ptr->ib_xchar = 
+        i_ptr0->ib_xchar;
+    editor[IEDDIC1+1].ob_spec.iconblk->ib_ychar = i_ptr->ib_ychar = 
+        i_ptr0->ib_ychar;
+    editor[IEDPATRN].ob_flags |= HIDETREE;
+    ed_color( &color, 
+        (unsigned)i_ptr0->ib_char>>(icoldm==ICOLDATA?12:8)&0xf );
+    color = (unsigned)i_ptr0->ib_char>>8;
+    if( file->type.p.pexec_mode >= D_PROG )
+    {
+      (*_icneo->to_filename)( file->name, editor[IEDTEMPL].ob_spec.tedinfo->te_ptext );
+      ed_obj = IEDTEMPL;
+      editor[IEDATT].ob_flags &= ~HIDETREE;
+    }
+    j = (i_ptr0->ib_char&3) ^ 3;
+    for( i=0; i<3; i++ )
+      editor[i+IEDFILE].ob_state = j==i+1 ? SELECTED : 0;
+  }
+  if( !ed_obj )
+  {
+    editor[IEDTEMPL].ob_flags |= HIDETREE;
+    editor[IEDTEMPL].ob_flags &= ~EDITABLE;
+  }
+  form_center( editor, &edx, &edy, &edw, &edh );
+  offset_objc( editor, IEDDISP, &x0, &y0 );
+  x0 += h_off;
+  y0 += v_off;
+  objc_draw( editor, 0, 8, edx, edy, edw, edh );
+  _lineaa();
+  (*graph->wmode0)();
+  if( ed_pat )
+  {
+    __bytecpy( old_pat, iptr, 32 );
+    old_col = pptr->bi_color;
+  }
+  for( y=y0-1, i=0; i<=y_max; i++, y+=v_off )
+  {
+    (*graph->wmode0)();
+    for( j=0, x=x0-1; j<=x_max; j++, x+=h_off )
+      (*graph->put_pixel)(x,y,3);
+    if( i<y_max )
+      if( !ed_pat )
+        for( j=0; j<2; j++ )
+        {
+          data = i_ptr->ib_pdata[(i<<1)+j];
+          mask = i_ptr->ib_pmask[(i<<1)+j];
+          for( k=15; k>=0; k-- )
+          {
+            pixel[i][(j<<4)+k] = (data & 1) | ((mask & 1)<<1);
+            data = data >> 1;
+            mask = mask >> 1;
+          }
+        }
+      else
+      {
+        k = *iptr++;
+        for( j=15; j>=0; j-- )
+        {
+          pixel[i][j] = k&1;
+          k >>= 1;
+        }
+      }
+  }
+  _linea9();
+  display();
+  redo_prev();
+  if( idcml == IEDLET ) goto tolet;
+  for(;;)
+  {
+    j = form_do( editor, ed_obj );
+    i = j&0x7FFF;
+    if( !(editor[i].ob_flags & TOUCHEXIT) )
+    {
+      editor[i].ob_state = 0;
+      objc_draw( editor, i, 0, edx, edy, edw, edh );
+    }
+sw: if( !(editor[i].ob_state&DISABLED) ) switch(i)
+    {
+      case IEDUNDO:
+        (*_nac->byteswap)( pixel, previous, PIXELS );
+        redo_sample();
+        do_disp( move, mbox );
+        break;
+      case IEDCLEAR:
+        i = 0;
+        if( imode < IBOTH && !ed_pat )
+        {
+          _spf( temp, _msg_ptr[0], editor[imode].ob_spec.tedinfo->te_ptext );
+          if( (j = _f_alert1( temp )) == 3 ) break;
+          if( j==1 )
+            if( imode == IDATA ) i = 2;
+            else i = 1;
+        }
+        redo_prev();
+        for( j=0; j<PIXELS; j++ )
+          pixel[0][j] &= i;
+        redo_sample();
+        do_disp( move, mbox );
+        break;
+      case IEDBLUR:
+        redo_prev();
+        for( i=0; i<x_max; i++ )
+          for( j=0; j<y_max; j++ )
+            if( !pixel[j][i] )
+            {
+              for( c=0, k=i-1; k<=i+1 && !c; k++ )
+                for( l=j-1; l<=j+1 && !c; l++ )
+                  if( k>=0 && l>=0 && k<x_max && l<y_max ) 
+                      if( pixel[l][k] ) c++;
+              if(c) tmppix[j][i] = pixel[j][i] | 2;
+              else tmppix[j][i] = 0;
+            }
+            else tmppix[j][i] = pixel[j][i] | 2;
+        __bytecpy( pixel, tmppix, PIXELS );
+        redo_sample();
+        if( imode != IDATA ) do_disp( move, mbox );
+        break;
+      case IROT:
+        redo_prev();
+        k = imode-IDATA+1;
+        for( i=0; i<x_max; i++ )        /* x_max must == y_max */
+          for( j=0; j<x_max; j++ )
+            tmppix[j][i] = (pixel[x_max-i-1][j] & k) | (pixel[j][i] & ~k);
+        __bytecpy( pixel, tmppix, PIXELS );
+        redo_sample();
+        do_disp( move, mbox );
+        break;
+      case IEDLET:
+        if( idcml != IEDLET )
+        {
+          if( move ) buttons( 0, mbox.x, mbox.y, mbox.w, mbox.h );
+tolet:    buttons( move=1, mbox.x=editor[IEDWIC1].ob_spec.iconblk->ib_xchar,
+              mbox.y=editor[IEDWIC1].ob_spec.iconblk->ib_ychar,
+              mbox.w=5, mbox.h=5 );
+          idcml = IEDLET;
+        }
+        break;
+      case IDRAW:
+      case ICOPY:
+      case IMOVE:
+        if( idcml != i )
+        {
+          if( move ) buttons( move=0, mbox.x, mbox.y, mbox.w, mbox.h );
+          idcml = i;
+        }
+        break;
+      case IEDDTOM:
+        redo_prev();
+        for( i=0; i<PIXELS; i++ )
+          pixel[0][i] |= (pixel[0][i]&1) << 1;
+        redo_sample();
+        if( imode != IDATA ) do_disp( move, mbox );
+        else _f_alert1( _msg_ptr[1] );
+        break;
+      case IEDUP:
+        shift( move, mbox, 0, -1 );
+        break;
+      case IEDLEFT:
+        shift( move, mbox, -1, 0 );
+        break;
+      case IEDRT:
+        shift( move, mbox, 1, 0 );
+        break;
+      case IEDDOWN:
+        shift( move, mbox, 0, 1 );
+        break;
+      case ICOLDATA:
+      case ICOLMASK:
+        color_it( i, &color );
+        break;
+      case IDATA:
+      case IMASK:
+      case IBOTH:
+        if( i != imode )
+        {
+          imode = i;
+          set_toggle();
+          do_disp( move, mbox );
+        }
+        break;
+      case IPOINT:
+      case ILINE:
+      case IFILL:
+      case IBOX:
+      case IFILBOX:
+        istyle = i;
+        break;
+      case ISET:
+      case IRESET:
+      case ITOGGLE:
+        iset = i;
+        break;
+      case ISOLID:
+      case ICHK1:
+      case ICHK2:
+      case IVERT1:
+      case IVERT2:
+        if( i != ipat )
+        {
+          editor[ipat].ob_state &= ~OUTLINED;
+          editor[ipat = i].ob_state |= OUTLINED;
+          set_toggle();
+          if( !tools_sep ) objc_draw( editor, ISOLID-2, 8, edx, edy, edw, edh );
+        }
+        break;
+      case INONE:
+      case ILR:
+      case ITB:
+      case I4WAY:
+        imirr = i;
+        break;
+      case IEDTOOLS:
+        editor[IEDTLBX].ob_flags &= ~HIDETREE;
+        k = editor[IEDTEMPL].ob_flags;
+        editor[IEDTEMPL].ob_flags &= ~EDITABLE;
+        objc_draw( editor, IEDTLBX, 8, edx, edy, edw, edh );
+frmdo:  j = form_do( editor, 0 );
+        if( (i = j&0x7FFF) == ICOLDATA || i==ICOLMASK )
+        {
+          color_it( i, &color );
+          goto frmdo;
+        }
+        else if( i==IEDDISP ) goto frmdo;
+        editor[IEDTLBX].ob_flags |= HIDETREE;
+        editor[IEDTEMPL].ob_flags = k;
+        offset_objc( editor, IEDTLBX, &temp1, &temp2 );
+        objc_draw( editor, 0, 8, temp1, temp2, editor[IEDTLBX].ob_width,
+            editor[IEDTLBX].ob_height );
+        goto sw;
+      case IEDPATRN:
+        rsrc_adr( IEDSKPAT, &obj );
+        if( !_use_8x16 )
+        {
+          rsrc_adr( IEDSKPT2, &obj2 );
+          for( i=IEDDPAT0; i<IEDDPAT0+16; i++ )
+            obj2[i].ob_spec.bitblk->bi_pdata = obj[i].ob_spec.bitblk->bi_pdata;
+          obj = obj2;
+        }
+        offset_objc( editor, IEDTLBX, &obj[0].ob_x, &obj[0].ob_y );
+        objc_draw( obj, 0, 8, edx, edy, edw, edh );
+        j = form_do( obj, 0 );
+        i = j&0x7FFF;
+        if( i==IEDDPCAN ) obj[IEDDPCAN].ob_state = 0;
+        else
+        {
+          iptr = obj[i].ob_spec.bitblk->bi_pdata;
+          for( i=0; i<16; i++ )
+          {
+            k = *iptr++;
+            for( j=15; j>=0; j-- )
+            {
+              pixel[i][j] = k&1;
+              k >>= 1;
+            }
+          }
+          redo_sample();
+          display();
+        }
+        objc_draw( editor, 0, 8, obj[0].ob_x, obj[0].ob_y,
+            editor[IEDTLBX].ob_width, editor[IEDTLBX].ob_height );
+        break;
+      case IEDCANC:
+        if( ed_pat )
+        {
+          __bytecpy( pptr->bi_pdata, old_pat, 32 );
+          pptr->bi_color = old_col;
+        }
+      case IEDOK:
+        editor[IEDTEMPL].ob_flags &= ~HIDETREE;
+        editor[IEDTEMPL].ob_flags |= EDITABLE;
+        k = 0;
+        if( ed_pat )
+        {
+          editor[IEDWIN].ob_flags &= ~HIDETREE;
+          *(Rect *)&editor[IEDDESK].ob_x = old;
+          editor[IEDDIC1].ob_flags = editor[IEDDIC1+1].ob_flags &= ~HIDETREE;
+          editor[IEDDMB].ob_flags &= ~HIDETREE;
+          editor[IEDLET].ob_flags &= ~HIDETREE;
+          editor[IEDBLUR].ob_flags = editor[IEDDTOM].ob_flags &= ~HIDETREE;
+          editor[IEDPATRN].ob_flags |= HIDETREE;
+          editor[IDRAW-1].ob_height = oh;
+          editor[ICOLMASK].ob_spec.tedinfo->te_ptext = old_mstr;
+          imode = om;
+        }
+        else if( i==IEDOK )
+        {
+          __bytecpy( i_ptr0->ib_pdata, i_ptr->ib_pdata, DATASIZ );
+          __bytecpy( i_ptr0->ib_pmask, i_ptr->ib_pmask, MASKSIZ );
+          i_ptr0->ib_xchar = i_ptr->ib_xchar;
+          i_ptr0->ib_ychar = i_ptr->ib_ychar;
+          for( i=IEDFILE; i<=IEDBOTH; i++ )
+            if( editor[i].ob_state&SELECTED ) j = IEDBOTH-i;
+          if( (i_ptr0->ib_char&3) != j ) k = 1;
+          i_ptr0->ib_char = (i_ptr->ib_char&0xFF00)|j;
+          if( ed_obj )
+          {
+            _from_filename( editor[IEDTEMPL].ob_spec.tedinfo->te_ptext, temp, 1 );
+            if( strcmp( temp, file->name ) )
+            {
+              strcpy( file->ib->ib_ptext, 
+                  editor[IEDTEMPL].ob_spec.tedinfo->te_ptext );
+              _pad_it( file->ib->ib_ptext );
+              strcpy( file->name, temp );
+              k = 1;
+            }
+          }
+        }
+        i = ed_pat || icoldm==ICOLMASK ? color&0xf : color>>4;
+        editor[i+IEDCOL0].ob_spec.obspec.character = '\0';
+        form_dial( FMD_FINISH, 0, 0, 0, 0, _z->maximum.x, _z->maximum.y,
+            _z->maximum.w, _z->maximum.h );
+        _arrow();
+        return(k);
+      case IEDDISP:
+        last = -1;
+        redo_prev();
+        i = get_mouse( &x, &y, &b, &mx, &my );
+        while( i )
+          if( !move && idcml >= ICOPY && idcml != IEDLET )
+          {
+            move = new_rbox( x, y, &mbox, 1 );
+            i = 0;
+          }
+          else if( move )
+          {
+            if( grab( &mx, &my, mbox.w, mbox.h, move ) )
+            { 
+              switch( move )
+              {
+                case 1:
+                  if( i_ptr->ib_xchar != mx || i_ptr->ib_ychar != my )
+                  {
+                    buttons( 0, mbox.x, mbox.y, 5, 5 );
+                    editor[IEDDIC1].ob_spec.iconblk->ib_xchar = 
+                        editor[IEDDIC1+1].ob_spec.iconblk->ib_xchar = 
+                        i_ptr->ib_xchar = mbox.x = mx;
+                    editor[IEDDIC1].ob_spec.iconblk->ib_ychar = 
+                        editor[IEDDIC1+1].ob_spec.iconblk->ib_ychar = 
+                        i_ptr->ib_ychar = mbox.y = my;
+                    sample();
+                    buttons( 1, mx, my, 5, 5 );
+                  }
+                  else graf_mouse( POINT_HAND, 0L );
+                  break;
+                case 2:
+                  if( mbox.x != mx || mbox.y != my )
+                  {
+                    buttons( 0, mbox.x, mbox.y, mbox.w, mbox.h );
+                    __bytecpy( tmppix, pixel, PIXELS );
+                    data = ~( imode - IDATA + 1 );
+                    mask = data ? ~data : 3;
+                    for( i=mbox.x, k=mx; i<mbox.x+mbox.w; i++, k++ )
+                      for( j=mbox.y, l=my; j<mbox.y+mbox.h; j++, l++ )
+                        if( k>=0 && k<x_max && l>=0 && l<y_max )
+                            tmppix[l][k] = pixel[j][i]&mask | tmppix[l][k]&data;
+                    if( idcml == IMOVE )
+                      for( i=mbox.x; i<mbox.x+mbox.w; i++ )
+                        for( j=mbox.y; j<mbox.y+mbox.h; j++ )
+                          if( i<mx || i>=mx+mbox.w || j<my || j>=my+mbox.h )
+                              tmppix[j][i] &= data;
+                    __bytecpy( pixel, tmppix, PIXELS );
+                    redo_sample();
+                    display();
+                    move = 0;
+                  }
+                  else graf_mouse( POINT_HAND, 0L );
+              }
+            }
+            else if( idcml >= ICOPY && idcml != IEDLET )
+            {
+              buttons( 0, mbox.x, mbox.y, mbox.w, mbox.h );
+              move = new_rbox( x, y, &mbox, 1 );
+            }
+            i = 0;
+          }
+          else if( istyle==IFILL )
+          {
+            _lineaa();
+            __bytecpy( tmppix, pixel, PIXELS );
+            mask = imode-IDATA+1;
+            seedfill( x, y, (pixel[y][x]^3)&mask, pixel[y][x]&mask );
+            for( i=0; i<x_max; i++ )
+              for( j=0; j<y_max; j++ )
+                if( tmppix[j][i] != pixel[j][i] ) set_pixel( i, j, b );
+            redo_sample();
+            waitbut();
+            _linea9();
+            i = 0;
+          }
+          else if( istyle==ILINE )
+          {
+            set_line( x, y );
+            i = 0;
+          }
+          else if( istyle==IBOX || istyle==IFILBOX )
+          {
+            if( new_rbox( x, y, &mbox, 0 ) )
+            {
+              _lineaa();
+              for( i=mbox.x; i<mbox.x+mbox.w; i++ )
+                for( j=mbox.y; j<mbox.y+mbox.h; j++ )
+                  if( istyle==IFILBOX || i==mbox.x || i==mbox.x+mbox.w-1 ||
+                      j==mbox.y || j==mbox.y+mbox.h-1 ) set_pixel( i, j, b );
+              redo_sample();
+              _linea9();
+            }
+            i = 0;
+          }
+          else
+          {
+            set_pixel( x, y, b );
+            while( (i = get_mouse( &nx, &ny, &b, &mx, &my )) != 0
+                && b&1 && nx == x && ny == y || !i && b&1 );
+            if( !(b&1) ) i = 0;
+            if( !i || ed_pat ) redo_sample();
+            x = nx;
+            y = ny;
+          }
+        break;
+      case IEDCOL0:
+      default:
+        ed_color( &color, i-IEDCOL0 );
+        break;
+    }
+  }
+}
+
+void edit_desk(void)
+{
+  edit_icon(0L);
+}
+
+int _ed_wind_type( int num )
+{
+  return( num>=0 ? ewind_type[num] : 0 );
+}
+
+int wind_type( int wind, int type )
+{
+  int i;
+  ICONBUF *icb;
+  char *ptr;
+  
+  not_nic[wind] = (ptr=strrchr(_z->w[wind].path,'.'))==NULL || 
+      strcmp(ptr,".NIC");
+/*%  _z->use_temp[wind] = (1<<NUM_TEMPL)-1; */
+  if( (ewind_type[wind] = type==EDW_FILE ? wind+EDW_FILE : type) >= EDW_FILE )
+  {
+    ptr = _z->w[wind].path;
+    for( i=0; i<7; i++ )
+      if( i != wind && _z->w[i].place && ewind_type[i]>=EDW_FILE &&
+          !strcmp(ptr,_z->w[i].path) )
+      {
+        _f_alert1( _msg_ptr[8] );
+        return(0);
+      }
+    for( i=0, icb=(ICONBUF *)((long)memory[0]+65536L-neo_rsc->rsh_rssize);
+        icb<(ICONBUF *)((long)memory[0]+mem_all) && !i; )
+      if( !*(ICONBUF **)icb ) i++;
+      else icb++;
+    if( !i )
+    {
+      no_memory();
+      return(0);
+    }
+    *(ICONBUF **)(memory[i=ewind_type[wind]] = icb) = (ICONBUF *)-1L;
+    if( !read_icons(wind) )
+    {
+      *(ICONBUF **)memory[i] = 0L;
+      memory[i] = 0L;
+      return(0);
+    }
+    cksum[i] = checksum(wind);
+  }
+  return(1);
+}
+
+void new_icon( ICONBUF *icb )
+{
+  OBJECT *obj;
+  
+  rsrc_adr( IICON, &obj );
+  __bytecpy( &icb->obj, &obj[2], sizeof(OBJECT) );
+  __bytecpy( icb->obj.ob_spec.iconblk=&icb->icb, obj[2].ob_spec.iconblk, sizeof(ICONBLK) );
+  __bytecpy( icb->icb.ib_pdata=icb->data, obj[2].ob_spec.iconblk->ib_pdata, DATASIZ );
+  __bytecpy( icb->icb.ib_pmask=icb->mask, obj[2].ob_spec.iconblk->ib_pmask, MASKSIZ );
+  strcpy( icb->icb.ib_ptext=icb->text, "           " );
+  icb->icb.ib_wtext = 13*6;
+}
+
+OBJECT *add_icon( int wnum )
+{
+  register int index, w;
+  register char *ptr;
+  OBJECT *obj;
+  ICONBLK *icon;
+  ICONBUF *icb, *icb2;
+  
+  if( wnum<0 || (w=ewind_type[wnum]) == EDW_ICONS )
+  {
+    if( mem_len >= (signed)sizeof(ICONBUF)+2 ) /* INTRFACE */
+    {
+      index = neo_icons + num_new[0];
+      mem_len -= sizeof(ICONBUF)+2;	/* INTRFACE */
+      if( num_new[0]++ >= 0 )
+      {
+        new_icon( next_new );
+        return( &(next_new++)->obj );
+      }
+      rsrc_adr( IICON, &obj );
+      icon = (*_icneo->icons)[index+1].ob_spec.iconblk;
+      __bytecpy( icon->ib_pdata, obj[2].ob_spec.iconblk->ib_pdata, DATASIZ );
+      __bytecpy( icon->ib_pmask, obj[2].ob_spec.iconblk->ib_pmask, MASKSIZ );
+      icon->ib_char = obj[2].ob_spec.iconblk->ib_char;
+      icon->ib_xchar = obj[2].ob_spec.iconblk->ib_xchar;
+      icon->ib_ychar = obj[2].ob_spec.iconblk->ib_ychar;
+      icon->ib_wtext = 13*6;
+      *(icon->ib_ptext) = '\0';
+      return( &(*_icneo->icons)[index+1] );
+    }
+    _f_alert1( _msg_ptr[9] );
+    return(0);
+  }     /* always returns from above block */
+  for( icb=icb2=memory[w]; *(ICONBUF **)icb2!=(ICONBUF *)-1L; )
+    icb2 = *(ICONBUF **)icb2;
+  if( !num_new[w] ) index=1;
+  else
+    for( index=0, icb=(ICONBUF *)((long)memory[0]+65536-
+        neo_rsc->rsh_rssize); icb<(ICONBUF *)((long)memory[0]+mem_all) &&
+        !index; )
+      if( !*(ICONBUF **)icb ) index++;
+      else icb++;
+  if( index )
+  {
+    new_icon(icb);
+    *(ICONBUF **)icb2 = icb;
+    *(ICONBUF **)icb = (ICONBUF *)-1L;      /* might undo the above */
+    num_new[w]++;
+    return(&icb->obj);
+  }
+  _f_alert1( _msg_ptr[10] );
+  return(0);
+}
+
+int del_conf(void)
+{
+  return( _f_alert1( _msg_ptr[11] ) == 1 );
+}
+
+int delete_icon( int wnum, int ind )    /* multiples must be done in reverse */
+{
+  register int i, w, j;
+  FSTRUCT file1, file2;
+  ICONBUF *icb, *icb2;
+  
+  w = ewind_type[wnum];
+  get_icon( wnum, ind, &file1 );
+  if( file1.type.p.pexec_mode < D_PROG )
+  {
+    _f_alert1( _msg_ptr[12] );
+    return(0);
+  }
+  if( w==EDW_ICONS )
+  {
+    for( i=ind+1; i<neo_icons+num_new[0]; i++ )
+    {
+      get_icon( wnum, i, &file2 );
+      i_copy( file1.ib, file2.ib );
+      __bytecpy( file1.ib->ib_ptext, file2.ib->ib_ptext, 12 );
+      file1.ib = file2.ib;
+    }
+    mem_len += sizeof(ICONBUF)+2;	/* INTRFACE */
+    if( next_new > memory[0] ) next_new--;
+  }
+  else
+  {
+    if( !ind )
+    {
+      if( *(ICONBUF **)memory[w] != (ICONBUF *)-1L )
+      {
+        icb = *(ICONBUF **)memory[w];
+        *(ICONBUF **)memory[w] = (ICONBUF *)0L;
+        memory[w] = icb;
+      }
+    }
+    else
+    {
+      icb = memory[w];
+      j = 0;
+      while( icb != (ICONBUF *)-1L && j<ind-1 )
+      {
+        icb = *(ICONBUF **)icb;
+        j++;
+      }
+      if( icb != (ICONBUF *)-1L )
+        if( (icb2 = *(ICONBUF **)icb) != (ICONBUF *)-1L )
+        {
+          *(ICONBUF **)icb = *(ICONBUF **)icb2;
+          *(ICONBUF **)icb2 = 0L;
+        }
+        else *(ICONBUF **)icb = (ICONBUF *)-1L;
+    }
+  }
+  num_new[w]--;
+  return(1);
+}
+
+/* ob_tail contains the icon type (FLOPPY, RAMDISK, etc.) */
+
+int get_icon( int wnum, int ind, FSTRUCT *file )
+{
+  int i, t;
+  ICONBUF *icb;
+  static int last_ind=-2;
+  static ICONBUF *last_icb;
+  
+  if( wnum<0 || (t = ewind_type[wnum])==EDW_ICONS )
+  {
+    if( (i = ind - neo_icons) < num_new[0] && i >= 0 )
+    {
+      last_ind = -2;
+      _from_filename( (file->ib=&memory[0][i].icb)->ib_ptext, file->name, 0 );
+    }
+    else if( ind < neo_icons + num_new[0] )
+    {
+      last_ind = -2;
+      file->ib = (*(_icneo->icons))[ind+1].ob_spec.iconblk;
+      if( ind >= D_PROG ) _from_filename( file->ib->ib_ptext, file->name, 0 );
+      else strcpy( file->name,
+          (*(_icneo->icons))[ind+1].ob_spec.iconblk->ib_ptext );
+    }
+    else return(0);
+    file->type.p.pexec_mode = ind;
+    file->read_only = ind<D_PROG ? 2 : 0;
+    file->state = 0;
+    return(1);
+  }
+  else if( ind<num_new[t] )
+  {
+    if( ind == last_ind+1 ) icb = *(ICONBUF **)last_icb;
+    else
+    {
+      icb = memory[t];
+      i = 0;
+      while( icb!=(ICONBUF *)-1L && i<ind )
+      {
+        icb = *(ICONBUF **)icb;
+        i++;
+      }
+    }
+    if( icb != (ICONBUF *)-1L )
+    {
+      file->ib=&icb->icb;
+      if( (file->type.p.pexec_mode=icb->obj.ob_tail)>=D_PROG )
+      {
+        _from_filename( icb->icb.ib_ptext, file->name, 0 );
+        file->read_only = 0;
+      }
+      else
+      {
+        strcpy( file->name,
+          (*(_icneo->icons))[icb->obj.ob_tail+1].ob_spec.iconblk->ib_ptext );
+        file->read_only = 2;
+      }
+      last_ind = ind;
+      last_icb = icb;
+      file->state = 0;
+      return(1);
+    }
+  }
+  return(0);
+}
+
+int nt_nic( int wnum )
+{
+  return(not_nic[wnum]);
+}
+
+void enable_menu( int wnum )
+{
+  int i;
+  
+  i = ewind_type[wnum];
+  imenu[IEDELALL].ob_state = wnum<0 || i<EDW_ICONS || 
+      (i!=EDW_ICONS && not_nic[wnum]) ? DISABLED : 0;
+  imenu[IRESETI].ob_state = (imenu[IREORDER].ob_state &= CHECKED) != 0 ?
+      DISABLED : 0;
+  imenu[IREORDER].ob_state |= imenu[IEDNEWIC].ob_state = 
+      wnum<0 || i<EDW_ICONS ? DISABLED : 0;
+  imenu[IEDUPDAT].ob_state = imenu[ICREATEN].ob_state = 
+      wnum<0 || i>=EDW_ICONS ? DISABLED : 0;
+  imenu[ISAVENIC].ob_state = wnum<0 || not_nic[wnum] ? DISABLED : 0;
+}
+
+void update_icons(void)
+{
+  char s[2];
+  
+  s[0] = ICON_LET;
+  s[1] = '\0';
+  (*_nac->update_drive)(s);
+}
+
+long str_pos, obj_pos, icb_pos, icon_pos;
+
+void dec_rsc( long *l )
+{
+  long ll;
+  
+  if( *l >= (long)neo_rsc ) *l -= (long)neo_rsc;
+  ll = *l;
+  if( ll >= str_pos ) *l += num_new[0]*14;	/* INTRFACE */
+  if( ll >= obj_pos ) *l += num_new[0]*sizeof(OBJECT);
+  if( ll >= icb_pos ) *l += num_new[0]*sizeof(ICONBLK);
+  if( ll >= icon_pos ) *l += num_new[0]*(MASKSIZ+DATASIZ);
+}
+
+int fhand;
+void _fwrite( long l, void *buf )
+{
+  long w;
+  
+  if( fhand>0 && l>0 )
+    if( (w=Fwrite( fhand, l, buf )) != l )
+    {
+      Fclose(fhand);
+      fhand = -1;
+      if( w >= 0 ) _f_alert1( _msg_ptr[13] );
+      else (*_nac->TOS_error)( w, 0 );
+    }
+}
+
+int seek_read( int hand, long size, long pos )
+{
+  return( Fseek( pos, hand, 0 ) != pos || Fread( hand, size, 
+      (char *)neo_rsc+pos ) != size );
+}
+
+int save_rsc(void)
+{
+#ifndef DEMO
+  int i;
+  unsigned int j, k, *iptr;
+  char path1[120], path2[120], *ptr;
+  OBJECT *obj;
+  ICONBLK *icb;
+  long pos, old_size, l, off, off2;
+
+  old_size = neo_rsc->rsh_rssize;
+  strcpy( path2, *_z->neo_path ? _z->neo_path : _z->dflt_path );
+  strcat( path2, _z->rsc_name );
+  if( path2[0] <= 'B' )
+  {
+    _spf( path1, _msg_ptr[14], path2[0] );
+    if( _f_alert1( path1 ) == 2 ) return(0);
+  }
+  ptr = (*_icneo->icons)[D_PROG].ob_spec.iconblk->ib_ptext; 
+  j = (long)ptr + 13 /**strlen(ptr) + 1**/ - (long)neo_rsc;   /* up to D_PROG string */ /* INTRFACE */
+  k = j+(neo_icons-D_PROG)*14; /* INTRFACE *//* last icon string */
+retry:
+  kick(path2);
+  if( (i=Fopen( path2, 2 )) < 0 || Fread( i, sizeof(RSHDR), neo_rsc ) != sizeof(RSHDR) ||
+      neo_rsc->rsh_rssize != old_size ||
+      seek_read( i, j-neo_rsc->rsh_string, neo_rsc->rsh_string ) ||   /* strings up to D_PROG */
+      seek_read( i, neo_rsc->rsh_imdata-k, k ) ||  /* and after last icon */
+      seek_read( i, neo_rsc->rsh_nted*sizeof(TEDINFO), neo_rsc->rsh_tedinfo ) ||
+      seek_read( i, neo_rsc->rsh_nobs*sizeof(OBJECT), neo_rsc->rsh_object ) )
+  {
+    if( i>0 ) Fclose(i);
+    switch( _f_alert1( _msg_ptr[15] ) )
+    {
+      case 1:
+        goto retry;
+      case 2:
+        return(1);
+      case 3:
+        return(0);
+    }
+  }
+  if( i>0 ) Fclose(i);
+  for( i=1; i<=D_PROG; i++ )
+    ((ICONBLK *)((long)(*_icneo->icons)[i].ob_spec.iconblk+(long)neo_rsc))->
+        ib_char &= 0xFF00;
+  for( ; i<=neo_icons; i++ )
+    _pad_it( ((ICONBLK *)((long)
+        (*_icneo->icons)[i].ob_spec.iconblk+(long)neo_rsc))->ib_ptext );
+  obj = &(*_icneo->icons)[neo_icons];
+  icb = (ICONBLK *)((long)obj->ob_spec.iconblk+(long)neo_rsc);
+  str_pos = (long)icb->ib_ptext+14 /*strlen(icb->ib_ptext)+1*/-(long)neo_rsc; /* INTRFACE */
+  obj_pos = (long)obj+sizeof(OBJECT)-(long)neo_rsc;
+  icb_pos = (long)icb+sizeof(ICONBLK)-(long)neo_rsc;
+  icon_pos = (long)icb->ib_pmask+DATASIZ+MASKSIZ-(long)neo_rsc;
+  fix_rsc( neo_rsc, (char *)neo_rsc+sizeof(RSHDR), dec_rsc );
+  neo_rsc->rsh_nobs += num_new[0];
+  neo_rsc->rsh_nib += num_new[0];
+  for( iptr=(unsigned int *)&neo_rsc->rsh_object; 
+      iptr<=(unsigned int *)&neo_rsc->rsh_trindex; )
+  {
+    l = *iptr;
+    dec_rsc(&l);
+    *iptr++ = l;
+  }
+  neo_rsc->rsh_rssize += num_new[0]*(sizeof(ICONBUF)+2); /* INTRFACE */
+  if( num_new[0] < 0 )
+  {
+    str_pos += 14*num_new[0];	/* INTRFACE */
+    obj_pos += sizeof(OBJECT)*num_new[0];
+    icb_pos += sizeof(ICONBLK)*num_new[0];
+    icon_pos += (DATASIZ+MASKSIZ)*num_new[0];
+  }
+  strcpy( path1, *_z->neo_path ? _z->neo_path : _z->dflt_path );
+  strcat( path1, "NEODESK$.RSC" );
+  fhand = Fcreate( path1, 0 );
+  /* write header and unaffected part of file in next _fwrite() */
+  pos=0L;
+
+  /* fixup OBJECTs */
+  obj = (OBJECT *)(obj_pos - sizeof(OBJECT) + (long)neo_rsc);
+  if( num_new[0] > 0 )
+  {
+    obj->ob_next = neo_icons+1;
+    obj->ob_flags &= ~LASTOB;
+  }
+  else
+  {
+    obj->ob_next = 0;
+    obj->ob_flags |= LASTOB;
+  }
+  (*_icneo->icons)[0].ob_tail += num_new[0];
+  /* write up to my first OBJECT */
+  _fwrite( obj_pos-pos, (char *)neo_rsc+pos );
+  /* write new OBJECTs */
+  pos = obj_pos;
+  off = icb_pos+num_new[0]*sizeof(OBJECT);
+  if( num_new[0] > 0 )
+    for( i=0; i<num_new[0]; i++ )
+    {
+      __bytecpy( &memory[0][i].obj, obj, sizeof(OBJECT) );
+      memory[0][i].obj.ob_next = i==num_new[0]-1 ? 0 : i+neo_icons+2;
+      (long)memory[0][i].obj.ob_spec.iconblk = off+i*sizeof(ICONBLK);
+      if( i==num_new[0]-1 ) memory[0][i].obj.ob_flags |= LASTOB;
+      else memory[0][i].obj.ob_flags &= ~LASTOB;
+      memory[0][i].obj.ob_head = memory[0][i].obj.ob_tail = -1;
+      _fwrite( sizeof(OBJECT), &memory[0][i].obj );
+    }
+  else pos -= num_new[0]*sizeof(OBJECT);
+
+  /* write up to ICONBLKs */
+  _fwrite( icb_pos-pos, (char *)neo_rsc+pos );
+  /* write new ICONBLKs */
+  pos = icb_pos;
+  obj = (OBJECT *)(obj_pos - sizeof(OBJECT) + (long)neo_rsc);
+  off = str_pos + num_new[0]*(sizeof(ICONBLK)+sizeof(OBJECT));
+  off2 = icon_pos + num_new[0]*(sizeof(ICONBLK)+sizeof(OBJECT)+14); /* INTRFACE */
+  if( num_new[0] > 0 )
+    for( i=0; i<num_new[0]; i++ )
+    {
+/*      __bytecpy( &memory[0][i].obj, obj, sizeof(OBJECT) );
+      (long)memory[0][i].obj.ob_spec.iconblk = pos+i*sizeof(ICONBLK)+off;*/
+      (long)memory[0][i].icb.ib_ptext = 14*i+off;  /* INTRFACE */
+      (long)memory[0][i].icb.ib_pmask = (DATASIZ+MASKSIZ)*i+off2;
+      (long)memory[0][i].icb.ib_pdata = (DATASIZ+MASKSIZ)*i+off2+MASKSIZ;
+      _fwrite( sizeof(ICONBLK), &memory[0][i].icb );
+    }
+  else pos -= num_new[0]*sizeof(ICONBLK);
+
+  /* write up to icon strings */
+  _fwrite( str_pos-pos, (char *)neo_rsc+pos );
+  /* write icon strings */
+  pos = str_pos;
+  if( num_new[0] > 0 )
+    for( i=0; i<num_new[0]; i++ )
+    {
+      _pad_it(memory[0][i].text);
+      _fwrite( 12, memory[0][i].text );
+      _fwrite( 2, "\0" );	/* INTRFACE */
+/*      (long)memory[0][i].icb.ib_ptext = pos+12*i+off;*/
+    }
+  else pos -= num_new[0]*14;	/* INTRFACE */
+
+  /* write up to icon data */
+  _fwrite( icon_pos-pos, (char *)neo_rsc+pos );
+  /* write new icon data */
+  pos = icon_pos;
+  if( num_new[0] > 0 )
+    for( i=0; i<num_new[0]; i++ )
+    {
+      _fwrite( MASKSIZ, memory[0][i].mask );
+      _fwrite( DATASIZ, memory[0][i].data );
+/*      (long)memory[0][i].icb.ib_pmask = pos+(DATASIZ+MASKSIZ)*i+off;
+        (long)memory[0][i].icb.ib_pdata = pos+(DATASIZ+MASKSIZ)*i+off+MASKSIZ; */
+    }
+  else pos -= num_new[0]*(DATASIZ+MASKSIZ);
+
+  /* write to end of file */
+  _fwrite( old_size-pos, (char *)neo_rsc+pos );
+  if( fhand<0 ) return(0);
+  Fclose(fhand);
+  if( Fdelete(path2) || Frename( 0, path1, path2 ) )
+  {
+    Fdelete(path1);
+    _f_alert1( _msg_ptr[16] );
+    return(0);
+  }
+#else DEMO
+  _f_alert1( _msg_ptr[IED_MSGS-2] );
+#endif DEMO
+  return(1);
+}
+
+int nread( int f_hand, void *pos, int count )
+{
+  return( Fread( f_hand, (long)count, pos ) != (long)count );
+}
+
+int iread( int f_hand, int i, int old_fmt, int wnum )
+{
+  register int err, j, *iptr1, *iptr2;
+  char buf[12], *ptr;
+  OBJECT *obj;
+  
+  if( i==CLIPBRD )
+  {
+    if( (obj = add_icon(wnum)) == 0 ) return(1);
+    obj->ob_tail = CLIPBRD;
+  }
+  if( (obj = add_icon(wnum)) == 0 ) return(1);
+  Fseek( (old_fmt ? 232 : 244)*(long)i, f_hand, 0 );
+  /* this centers 28*32 within 32*32 */
+  if( (err = nread( f_hand, (iptr1=obj->ob_spec.iconblk->ib_pdata)+4, 112 )) == 0 )
+      err = nread( f_hand, (iptr2=obj->ob_spec.iconblk->ib_pmask)+4, 112 );
+  *(long *)iptr1 = *((long *)iptr1+1) = *(long *)iptr2 = *((long *)iptr2+1) =
+      *((long *)iptr1+30) = *((long *)iptr2+30) = *((long *)iptr1+31) =
+      *((long *)iptr2+31) = 0;
+  ptr=obj->ob_spec.iconblk->ib_ptext;
+  if( !err && !old_fmt ) err = nread( f_hand, i<9 ? buf : ptr, 12 );
+  if( !err )
+  {
+    obj->ob_tail = (i+=(i>=CLIPBRD)) >= D_PROG ? D_PROG : i;
+    if( i>8 )
+    {
+      j = strlen(ptr);
+      ptr += j;
+      for( ; j<11; j++ )
+        *ptr++ = ' ';
+      *ptr = '\0';
+    }
+    err = nread( f_hand, &(obj->ob_spec.iconblk->ib_xchar), 8 );
+  }
+  return(err);
+}
+
+void read_dm( int hand, int h, int skip_f, int skip_m, int *ptr )
+{
+  /* skip_f and skip_m are number of words to skip */
+  if( !skip_f && !skip_m ) Fread( hand, h<<2, ptr );
+  else
+    while(h--)
+      if( skip_f )
+      {
+        Fread( hand, 4L, ptr );
+        Fseek( skip_f<<1, hand, 1 );
+        ptr += 2;
+      }
+      else
+      {
+/*      Fread( hand, 4L-(skip_m<<1), ptr );
+        ptr += 2-skip_m;
+        while( skip_m-- ) *ptr++ = 0; */
+        Fread( hand, 4L-2, ptr++ );
+        *ptr++ = 0;
+      }
+}
+
+void read_img( int h, int w, long data, long mask, OBJECT *obj, int f_hand )
+{
+  int j, skip_f, skip_m;
+
+  j = h >= ICON_H ? ICON_H : h;
+  skip_f = w > ICON_W ? (w-ICON_W+15)>>4 : 0;
+/*skip_m = icb.ib_wicon < (ICON_W-15) ? (ICON_W-icb.ib_wicon)>>4 : 0; */
+  skip_m = w < (ICON_W-15) ? 1 : 0;
+  Fseek( data, f_hand, 0 );
+  read_dm( f_hand, j, skip_f, skip_m, obj->ob_spec.iconblk->ib_pdata );
+  if( mask )
+  {
+    Fseek( mask, f_hand, 0 );
+    read_dm( f_hand, j, skip_f, skip_m, obj->ob_spec.iconblk->ib_pmask );
+  }
+  else _memclr( obj->ob_spec.iconblk->ib_pmask, MASKSIZ );
+  j <<= 1;
+  while( j<(ICON_H<<1) )
+  {
+    obj->ob_spec.iconblk->ib_pdata[j] = obj->ob_spec.iconblk->ib_pmask[j] = 0;
+    j++;
+  }
+  obj->ob_spec.iconblk->ib_char &= 0xFF00;
+  obj->ob_tail = D_PROG;	/* +i */
+}
+
+int read_rsc_i( char *name, int f_hand, int wnum )
+{
+  int f_hand2, err;
+  unsigned int i;
+  RSHDR rsh;
+  ICONBLK icb;
+  BITBLK bb;
+  OBJECT *obj;
+  char temp[12];
+  
+  if( (*_nac->TOS_error)(f_hand2=Fopen(name,0),0) && Fread( f_hand, 
+      sizeof(RSHDR), &rsh ) == sizeof(RSHDR) &&
+      Fseek( rsh.rsh_iconblk, f_hand, 0 ) == rsh.rsh_iconblk )
+  {
+    for( i=err=0; i<rsh.rsh_nib && !err; i++ )
+      if( Fread( f_hand, sizeof(ICONBLK), &icb ) == sizeof(ICONBLK) &&
+          (obj=add_icon(wnum)) != 0 )
+      {
+        read_img( icb.ib_hicon, icb.ib_wicon, (long)icb.ib_pdata,
+            (long)icb.ib_pmask, obj, f_hand2 );
+        obj->ob_spec.iconblk->ib_xchar = icb.ib_xchar;
+        obj->ob_spec.iconblk->ib_ychar = icb.ib_ychar;
+        Fseek( (long)icb.ib_ptext, f_hand2, 0 );
+        Fread( f_hand2, 11, temp );
+        temp[11] = '\0';
+        if( strchr(temp,'.') ) (*_icneo->to_filename)( temp,
+            obj->ob_spec.iconblk->ib_ptext );
+        else strcpy( obj->ob_spec.iconblk->ib_ptext, temp );
+      }
+      else err++;
+    if( !err && Fseek( rsh.rsh_bitblk, f_hand, 0 ) == rsh.rsh_bitblk )
+      for( i=0; i<rsh.rsh_nbb && !err; i++ )
+        if( Fread( f_hand, sizeof(BITBLK), &bb ) == sizeof(BITBLK) &&
+            (obj=add_icon(wnum)) != 0 )
+      {
+        read_img( bb.bi_hl, bb.bi_wb<<3, (long)bb.bi_pdata, 0L, obj, f_hand2 );
+        obj->ob_spec.iconblk->ib_ptext[0] = '\0';
+        obj->ob_spec.iconblk->ib_xchar =
+            obj->ob_spec.iconblk->ib_ychar = 0;
+      }
+    Fclose(f_hand2);
+    if( !num_new[ewind_type[wnum]] )
+    {
+      _f_alert1( _msg_ptr[17] );
+      return(0);
+    }
+    return(1);
+  }
+  if( f_hand2 >= 0 )
+  {
+    Fclose(f_hand2);
+    _f_alert1( _msg_ptr[18] );
+  }
+  return(0);
+}
+
+int not_eof( char *ptr )
+{
+  return( *ptr != -1 );
+}
+
+int icn_int( char *ptr, int *out, char **optr )
+{
+  static char ign[]="\r\n {},";
+  
+  while( strchr(ign,*ptr) ) ptr++;
+  if( not_eof(ptr) )
+  {
+    if( !strncmp(ptr,"0x",2) && (*_nac->sscnf)( ptr+=2, "%x", out ) || 
+        (*_nac->sscnf)( ptr, "%d", out ) )
+      if( (*optr=strchr(ptr,',')) != 0 || (*optr=strchr(ptr,'}')) != 0 )
+          return( not_eof(ptr) );
+  }
+  _f_alert1( _msg_ptr[19] );
+  return(0);
+}
+
+char *_strstr( char *s1, char *s2 )
+{
+  char *ptr;
+  
+  if( (ptr = strstr( s1, s2 )) == 0 ) _f_alert1( _msg_ptr[19] );
+  return(ptr);
+}
+
+int read_icn( int hand, int wnum )
+{
+  char *ptr, *ptr0, noerr;
+  long len;
+  int w, h, i, j, skip_m, dum, *dptr, *mptr;
+  OBJECT *obj;
+  
+  if( (ptr0=Malloc(len = Fseek( 0L, hand, 2 )+1)) != NULL )
+  {
+    noerr = 1;
+    Fseek( 0L, hand, 0 );
+    len = Fread( hand, len, ptr=ptr0 );
+    *(ptr0+len) = -1;
+    if( (ptr=_strstr(ptr0,"_W")) != 0 && icn_int( ptr+3, &w, &ptr ) &&
+        (ptr=_strstr(ptr0,"_H")) != 0 && icn_int( ptr+3, &h, &ptr ) &&
+        (ptr=strchr(ptr0,'{')) != 0 )
+    {
+      j = h = h >= ICON_H ? ICON_H : h;
+/*      skip_m = w < (ICON_W-15) ? (ICON_W-w)>>4 : 0; */
+      skip_m = w < (ICON_W-15) ? 1 : 0;
+      if( (obj = add_icon(wnum)) != 0 )
+      {
+        ptr++;
+        dptr = obj->ob_spec.iconblk->ib_pdata;
+        mptr = obj->ob_spec.iconblk->ib_pmask;
+        while( j-- && noerr )
+        {
+          for( i=0; i<(w+15>>4) && noerr; i++ )
+          {
+            noerr = icn_int( ptr, i<=1 ? dptr : &dum, &ptr );
+            if( i<=1 )
+            {
+              dptr++;
+              *mptr++ = 0;
+            }
+          }
+          if( skip_m ) *dptr++ = *mptr++ = 0;
+        }
+        _memclr( dptr, h=(ICON_H-h)<<2 );
+        _memclr( mptr, h );
+/**     while( h++<ICON_H ) *((long *)dptr)++ = *((long *)mptr)++ = 0; **/
+      }
+      else noerr=0;
+    }
+    else noerr=0;
+    Mfree(ptr0);
+    return(noerr);
+  }
+  else
+  {
+    _f_alert1( _msg_ptr[20] );
+    return(0);
+  }
+}
+
+#define MAX_PLANES 2       /* These numbers are for ND 3.01 */
+#define MAX_W      ICON_WW /* width in words */
+#define MAX_H      ICON_H  /* height in pixels */
+#define MAX_DATA   (MAX_PLANES*MAX_W*MAX_H)
+typedef struct
+{
+  unsigned char size_x, size_y;
+  unsigned char ignore[4];
+  unsigned char xchar, ychar;
+  unsigned char planes;
+  unsigned char type;   /* use ICON_TYPE to convert */
+  char text[12];
+  unsigned char colors[MAX_PLANES];
+  int data[MAX_DATA];
+} NEO_ICON;
+
+int read_header( int hand, unsigned int *entries, void *ni, 
+                 unsigned int *codelen )
+{
+  char buf[sizeof(nicinfo[0])+4];
+  
+  if( Fread( hand, sizeof(buf), buf ) == sizeof(buf) )
+  {
+    key = KEY_START;
+    encrypt( buf, entries, 2 );
+    key = KEY_START;
+    encrypt( buf+2, ni, sizeof(nicinfo[0]) );
+    key = KEY_START;
+    encrypt( buf+2+sizeof(nicinfo[0]), codelen, 2 );
+    return(1);
+  }
+  return(0);
+}
+
+int read_new_nic( int hand, int wnum, unsigned int skip )
+{
+  int err=1, i, h, j, *dptr, *dfptr, *mptr, *mfptr;
+  unsigned int codelen, entries, entry;
+  char *code;
+  OBJECT *obj;
+  ICONBLK *icb;
+  NEO_ICON ni;
+  ICON_TYPE it;
+  
+  Fseek( skip, hand, 1 );
+  if( read_header( hand, &entries, &nicinfo[wnum], &codelen ) )
+  {
+    err=0;
+    if( (code=Malloc(codelen)) == 0 )
+    {
+      _f_alert1( _msg_ptr[20] );
+      return(0);
+    }
+    else
+    {
+      if( Fread( hand, codelen, code ) != codelen ) err++;
+      else
+      {
+        for( entry=0; entry<entries && !err; entry++ )
+        {
+          ni.size_x = MAX_W;
+          ni.size_y = MAX_H;
+          ni.planes = MAX_PLANES;
+          if( (i=(*(int (*)( int h, int ent, NEO_ICON *ni ))code)
+              ( hand, entry, &ni )) == -2 ) err++;
+          else if( !i )
+            if( (obj = add_icon(wnum)) != 0 )
+            {
+              icb = obj->ob_spec.iconblk;
+              j = h = ni.size_y >= ICON_H ? ICON_H : ni.size_y;
+              dptr = icb->ib_pdata;
+              mptr = icb->ib_pmask;
+              dfptr = (mfptr = ni.data) + ni.size_x*ni.size_y;
+              while( j-- )
+              {
+                for( i=0; i<ni.size_x; i++ )
+                {
+                  *dptr++ = *dfptr++;
+                  *mptr++ = *mfptr++;
+                }
+                if( ni.size_x==1 ) *dptr++ = *mptr++ = 0;
+              }
+              _memclr( dptr, h=(ICON_H-h)<<2 );
+              _memclr( mptr, h );
+/*            while( h++<ICON_H ) *((long *)dptr)++ = *((long *)mptr)++ = 0;*/
+              strcpy( icb->ib_ptext, ni.text );
+              it.i = ni.type;
+              icb->ib_char = (it.type.file?0:1)|(it.type.folder?0:2)|
+                  (ni.colors[0]<<8)|(ni.colors[1]<<12);
+              icb->ib_xchar = ni.xchar;
+              icb->ib_ychar = ni.ychar;
+              obj->ob_tail = it.type.dflt>=0 ? it.type.dflt : D_PROG;
+            }
+            else break;
+        }
+      }
+      Mfree(code);
+    }
+  }
+  if( err ) _f_alert1( _msg_ptr[21] );
+  return(1);
+}
+
+int read_ice( int hand, int wnum )
+{
+  struct
+  {
+    long i_cookie, size;
+    int hdrsize;
+    unsigned int entries, feoff, fnsize, nicons, ieoff, msksize, datsize;
+  } hdr;
+  struct
+  {
+    long index;
+    char iconc, iconx, icony;
+  } fname;
+  char err, name[13];
+  unsigned int i;
+  long l;
+  OBJECT *obj;
+  ICONBLK *icb;
+  
+  if( Fread( hand, sizeof(hdr), &hdr ) == sizeof(hdr) )
+    for( i=err=0; i<hdr.entries && !err; i++ )
+    {
+      Fseek( l=hdr.hdrsize+i*hdr.feoff, hand, 0 );
+      if( Fread( hand, sizeof(name), name ) != sizeof(name) ) err++;
+      else
+      {
+        name[12] = '\0';
+        Fseek( l+hdr.fnsize, hand, 0 );
+        if( Fread( hand, sizeof(fname), &fname ) != sizeof(fname) ) err++;
+        else if( (obj=add_icon(wnum)) != 0 )
+        {
+          Fseek( hdr.hdrsize+hdr.entries*hdr.feoff+fname.index*
+              hdr.ieoff, hand, 0 );
+          Fread( hand, 128L, (icb=obj->ob_spec.iconblk)->ib_pmask );
+          Fread( hand, 128L, icb->ib_pdata );
+          (*_icneo->to_filename)( name, icb->ib_ptext );
+          icb->ib_char = 0|0|(0<<8)|(1<<12);
+          icb->ib_xchar = fname.iconx;
+          icb->ib_ychar = fname.icony;
+          obj->ob_tail = D_PROG;	/* +i */
+        }
+        else err++;
+      }
+    }
+  return(1);
+}
+
+int read_icons( int wnum )
+{
+  int f_hand, err, i, num, old_fmt=0, buf[4];
+  long len;
+  char *ptr, *ptr2;
+
+  if( ewind_type[wnum] >= EDW_FILE )
+  {
+    _bee();
+    if( (f_hand = Fopen( ptr2=_z->w[wnum].path, 0 )) >= 0 )
+    {
+      if( not_nic[wnum] )
+      {
+        ptr = strrchr( ptr2, '.' );
+        if( !strcmp( ptr, ".RSC" ) && !read_rsc_i( ptr2, f_hand, wnum ) || 
+            !strcmp( ptr, ".ICN" ) && !read_icn( f_hand, wnum ) ||
+            !strcmp( ptr, ".ICE" ) && !read_ice( f_hand, wnum ) )
+        {
+badfile:  Fclose(f_hand);
+          _arrow();
+          return(0);
+        }
+      }
+      else
+      {
+        Fread( f_hand, 7L, buf );
+        if( *(long *)buf == 0x2E4E4943 && buf[2] <= *(((int *)&icheader)+2) )
+        {
+          if( !read_new_nic( f_hand, wnum, ((unsigned)buf[3]>>8) ) )
+              goto badfile;
+        }
+        else
+        {
+          if( (len = Fseek( 0L, f_hand, 2 )) == 2088L )
+          {
+            old_fmt++;
+            num = 9;
+          }
+          else if( (num = len / 244) <= 0 || num*244L != len )
+          {
+            Fclose(f_hand);
+            _arrow();
+            _f_alert1( _msg_ptr[22] );
+            return(0);
+          }
+          for( i=err=0; i<num && !err; i++ )
+            err = iread( f_hand, i, old_fmt, wnum );
+          nicinfo[wnum].auth[0] = nicinfo[wnum].comment[0][0] =
+              nicinfo[wnum].comment[1][0] = nicinfo[wnum].comment[2][0]
+              = '\0';
+          nicinfo[wnum].create = nicinfo[wnum].modify = 0L;
+        }
+      }
+      Fclose( f_hand );
+    }
+    _arrow();
+    num_new0[i] = num_new[i=ewind_type[wnum]];
+    return( (*_nac->TOS_error)( (long)f_hand, 0 ) );
+  }
+  return(1);
+}
+
+void clear_icons( int t, int dflt )
+{
+  ICONBUF *icb, *icb2;
+  int i=dflt;
+  
+  if( (icb=memory[t]) != 0 )
+    do
+    {
+      icb2 = *(ICONBUF **)icb;
+      if( dflt || icb2 == (ICONBUF *)-1L || icb2->obj.ob_tail>=D_PROG )
+      {
+        *(ICONBUF **)icb = i++ ? (ICONBUF *)0L : (ICONBUF *)-1L;
+        if( icb2 != (ICONBUF *)-1L ) num_new[t]--;
+      }
+    }
+    while( (icb=icb2) != (ICONBUF *)-1L );
+  if( dflt ) num_new[t] = 0;
+}
+
+int save_nic( int num )
+{
+  int t;
+  
+  if( create_nic( 0, num ) )
+  {
+    cksum[t=ewind_type[num]] = checksum(num);
+    num_new0[t] = num_new[t];
+    return(1);
+  }
+  return(0);
+}
+
+int check_save( int num )
+{
+  int t, chk;
+  char temp[100];
+  
+  if( (t=ewind_type[num]) < EDW_FILE ) return(-1);
+  if( not_nic[num] ) return(1);
+  if( checksum(num) != cksum[t] || num_new0[t] != num_new[t] )
+  {
+    _spf( temp, _msg_ptr[23], strrchr(_z->w[num].path,'\\')+1 );
+    switch( _f_alert1( temp ) )
+    {
+      case 1:
+        return( save_nic(num) );
+      case 2:
+        return(1);
+      case 3:
+        return(0);
+    }
+  }
+  return(1);
+}
+
+int close_icons( int num )
+{
+  int t, chk;
+  char temp[100];
+  
+  switch( check_save( num ) )
+  {
+    case 1:
+      clear_icons( t=ewind_type[num], 1 );
+      memory[t] = 0L;
+    case -1:
+      return(1);
+    default:
+      return(0);
+  }
+}
+
+ICONBLK *find_dflt( int wnum, int num )
+{
+  FSTRUCT file;
+  int i;
+  
+  if( wnum<0 || ewind_type[wnum]==EDW_ICONS ) 
+      return( (*_icneo->icons)[num+1].ob_spec.iconblk );
+  for( i=0; i<D_PROG; i++ )
+  {
+    get_icon( wnum, num, &file );
+    if( file.type.p.pexec_mode==num ) return(file.ib);
+  }
+  _f_alert1( _msg_ptr[24] );
+  return(0);
+}
+
+int copy_icon( int wnum, FSTRUCT *wfile, int witems, ICONBLK *ditem )
+{       /* wnum is num of dest window or -1 if icons */
+  int i;
+  OBJECT *obj;
+  ICONBLK *icb;
+  
+  _arrow();
+  if( wnum>0 && not_nic[wnum] && ewind_type[wnum]!=EDW_ICONS )
+  {
+    _f_alert1( _msg_ptr[25] );
+    return(0);
+  }
+  if( _z->conf_copy )
+    if( !ditem )
+    {
+      if( _f_alert1( _msg_ptr[26] ) == 2 ) return(0);
+    }
+    else if( _f_alert1( _msg_ptr[27] ) == 2 ) return(0);
+  for( i=0; i<witems; i++ )
+    if( wfile[i].state )
+      if( !ditem )
+        if( wfile[i].type.p.pexec_mode < D_PROG )
+        {
+          if( (icb = find_dflt( wnum, wfile[i].type.p.pexec_mode )) != 0 )
+              i_copy( icb, wfile[i].ib );
+        }
+        else
+        {
+          if( (obj=add_icon(wnum)) == 0 ) return(1);
+          i_copy( obj->ob_spec.iconblk, wfile[i].ib );
+          strcpy( obj->ob_spec.iconblk->ib_ptext, wfile[i].ib->ib_ptext );
+          obj->ob_tail = wfile[i].type.p.pexec_mode;
+        }
+      else i_copy( ditem, wfile[i].ib );
+  return(1);
+}
+
+void free_msg(void)
+{
+  if( _new_msgs ) Mfree(_new_msgs);
+}
+
+void quitit( int no_quit )
+{
+  _bee();
+  Mfree(memory[0]);
+  Mfree(rsc);
+  free_msg();
+  _z->pic_ptr = old_pic;
+  (*_icneo->reset_all_icons)(no_quit);
+  no_xlate++;
+  (*_nac->close_all)();
+  no_xlate=0;
+  if( !no_quit )
+  {
+    _z->notes[2] = old_note;
+    __bytecpy( _z->i_type, old_itype, NUM_ICONS*sizeof(int) );
+    __bytecpy( _z->template, old_templ, NUM_TEMPL*13 );
+/*%    __bytecpy( _z->use_temp, old_use, 7 ); */
+    __bytecpy( _z->w, old_ws, 7*sizeof(struct Wstruct) );
+    __bytecpy( _z->programs, old_programs, NUM_PROGS*sizeof(PSTRUCT) );
+    __bytecpy( _z->idat, old_idat, NUM_ICONS*sizeof(ICONSAVE) );
+    __bytecpy( _z->showicon, old_showicon, 7*sizeof(int) );
+    _z->mshowicon = old_mshowicon;
+  }
+  _arrow();
+}
+
+int quit_iedit( int no_quit )
+{
+  int i;
+  
+  for( i=0; i<7; i++ )
+    if( _z->w[i].place ) 
+      if( !check_save(i) ) return(0);
+  if( num_new[0] || cksum[0] != checksum(-1) )
+    if( no_quit )
+    {
+      if( _f_alert1( _msg_ptr[28] ) == 2 )
+          return(0);
+    }
+    else switch( _f_alert1( _msg_ptr[29] ) )
+    {
+      case 1:
+        _bee();
+        if( !save_rsc() )
+        {
+          _arrow();
+          return(0);
+        }
+        break;
+      case 2:
+        break;
+      case 3:
+        return(0);
+    }
+  quitit(no_quit);
+  return(1);
+}
+
+int create_nic( int new, int wnum )
+{
+#ifndef DEMO
+  long l, len;
+  unsigned int i, num;
+  OBJECT *obj;
+  char *ptr, temp[120], buf[2+DATASIZ+MASKSIZ];
+  ICONFILE icf;
+  ICON_TYPE it;
+  FSTRUCT file;
+  
+  if( new )
+  {
+    rsrc_adr( NICINFO, &obj );
+    kick( _z->w[wnum].path );
+    strcpy( ptr=temp, _z->w[wnum].path );
+    strcpy( strrchr(temp,'\\')+1, obj[NICNAME].ob_spec.tedinfo->te_ptext );
+    strcat( temp, ".NIC" );
+    if( !Fsfirst( temp, 0x37 ) )
+    {
+      _f_alert1( _msg_ptr[30] );
+      return(0);
+    }
+  }
+  else Fdelete( ptr=_z->w[wnum].path );
+  _bee();
+  if( (*_nac->TOS_error)( fhand=Fcreate(ptr,0), 0 ) )
+  {
+    key = KEY_START;
+    l = ((long)Tgetdate()<<16)|Tgettime();
+    if( new )
+    {
+      encrypt( &l, &iccreate, sizeof(l) );
+      encrypt( &l, &icmodify, sizeof(l) );
+      encrypt( obj[NICAUTH].ob_spec.tedinfo->te_ptext, icauth, 26 );
+      encrypt( obj[NICCOMM1].ob_spec.tedinfo->te_ptext, iccomment, 36 );
+      encrypt( obj[NICCOMM1+1].ob_spec.tedinfo->te_ptext, iccomment+36, 36 );
+      encrypt( obj[NICCOMM1+2].ob_spec.tedinfo->te_ptext, iccomment+72, 36 );
+    }
+    else
+    {
+      icentries = num_new[ewind_type[wnum]];
+      nicinfo[wnum].modify = l;
+      encrypt( &nicinfo[wnum], &iccreate, sizeof(nicinfo[0]) );
+    }
+    num = icentries;
+    key = KEY_START;
+    encrypt( &icentries, &icentries, sizeof(icentries) );
+    i = (long)&icon_list - (long)extract_icon;
+    key = KEY_START;
+    encrypt( &i, &iccode, sizeof(i) );
+    _fwrite( len=(long)&icon_list-(long)&icheader, &icheader );
+    for( i=0; i<num; i++ )
+      if( get_icon( new ? -1 : wnum, i, &file ) )
+      {
+        icf.size_x = ICON_WW;
+        icf.size_y = ICON_H;
+        icf.xicon = 20;
+        icf.yicon = 0;
+        icf.banx = 0;
+        icf.bany = ICON_H;
+        icf.planes = 2;
+        icf.xchar = file.ib->ib_xchar;
+        icf.ychar = file.ib->ib_ychar;
+        it.type.file = (file.ib->ib_char&1) == 0;
+        it.type.folder = (file.ib->ib_char&2) == 0;
+        it.type.dflt = file.type.p.pexec_mode<D_PROG ? 
+            file.type.p.pexec_mode : -1;
+        icf.type = it.i;
+        strcpy( icf.string, file.ib->ib_ptext );
+        icf.colors = len + sizeof(icf)*num;
+        len += icf.planes;
+        icf.data = len + sizeof(icf)*num;
+        len += (icf.planes*icf.size_x*icf.size_y)<<1;
+        key = KEY_START;
+        encrypt( &icf, &icf, sizeof(icf) );
+        _fwrite( sizeof(icf), &icf );
+      }
+    for( i=0; i<num; i++ )
+      if( get_icon( new ? -1 : wnum, i, &file ) )
+      {
+        key = KEY_START;
+        buf[0] = ((unsigned)file.ib->ib_char>>8)&0xf;
+        buf[1] = (unsigned)file.ib->ib_char>>12;
+        encrypt( buf, buf, 2 );
+        key = KEY_START;
+        encrypt( file.ib->ib_pmask, buf+2, MASKSIZ );
+        encrypt( file.ib->ib_pdata, buf+2+MASKSIZ, DATASIZ );
+        _fwrite( DATASIZ+MASKSIZ+2, buf );
+      }
+    if( fhand>0 ) Fclose(fhand);
+    else Fdelete(ptr);
+    if( new && fhand>0 ) (*_icneo->open_to_path)(ptr);
+    strcpy( temp, ptr );
+    *(strrchr(temp,'\\')+1) = '\0';
+    (*_nac->update_drive)(temp);
+  }
+  _arrow();
+  return( fhand>0 );
+#else DEMO
+  _f_alert1( _msg_ptr[new ? IED_MSGS-1 : IED_MSGS-2] );
+  return(1);
+#endif
+}
+
+int nic_info( int old, int wnum, char *str )
+{
+#ifndef DEMO
+  OBJECT *obj;
+  char *ptr, *ptr2, *ptr3, *ptr4, temp[9];
+  int time[6];
+  
+  rsrc_adr( NICINFO, &obj );
+  if( !old )
+  {
+    obj[NICCREAT].ob_spec.free_string[0] = obj[NICMOD].ob_spec.free_string[0] =
+        obj[NICAUTH].ob_spec.tedinfo->te_ptext[0] = 
+        obj[NICCOMM1].ob_spec.tedinfo->te_ptext[0] = 
+        obj[NICCOMM1+1].ob_spec.tedinfo->te_ptext[0] = 
+        obj[NICCOMM1+2].ob_spec.tedinfo->te_ptext[0] = 
+        obj[NICNAME].ob_spec.tedinfo->te_ptext[0] = '\0';
+    icentries = D_PROG;
+    ptr = "";
+  }
+  else
+  {
+    (*_icneo->to_tandd)( iccreate, time );
+    (*_icneo->tandd_to_str)( time, obj[NICCREAT].ob_spec.free_string );
+    (*_icneo->to_tandd)( icmodify, time );
+    (*_icneo->tandd_to_str)( time, obj[NICMOD].ob_spec.free_string );
+    strcpy( obj[NICAUTH].ob_spec.tedinfo->te_ptext, icauth );
+    strcpy( obj[NICCOMM1].ob_spec.tedinfo->te_ptext, iccomment );
+    strcpy( obj[NICCOMM1+1].ob_spec.tedinfo->te_ptext, iccomment+36 );
+    strcpy( obj[NICCOMM1+2].ob_spec.tedinfo->te_ptext, iccomment+72 );
+    obj[NICAUTH].ob_flags &= ~EDITABLE;
+    ptr = ptr4 = strrchr( str ? str : _z->w[wnum].path, '\\' ) + 1;
+    ptr2 = obj[NICNAME].ob_spec.tedinfo->te_ptext;
+    for( ptr3=temp; *ptr != '.' && *ptr; )
+      *ptr2++ = *ptr3++ = *ptr++;
+    *ptr2 = *ptr3 = '\0';
+  }
+  _spf( obj[NICICONS].ob_spec.free_string, "%D", (unsigned long)icentries );
+  *_icneo->form = obj;
+  if( (*_icneo->make_form)( -1, NICNAME, 0L ) == NICOK )
+  {
+    ptr = obj[NICNAME].ob_spec.tedinfo->te_ptext;
+    if( !*ptr ) _f_alert1( _msg_ptr[31] );
+    else if( !old ) create_nic( 1, wnum );
+    else
+    {
+      obj[NICAUTH].ob_flags |= EDITABLE;
+      strcpy( iccomment, obj[NICCOMM1].ob_spec.tedinfo->te_ptext );
+      strcpy( iccomment+36, obj[NICCOMM1+1].ob_spec.tedinfo->te_ptext );
+      strcpy( iccomment+72, obj[NICCOMM1+2].ob_spec.tedinfo->te_ptext );
+      if( strcmp( temp, ptr ) )
+      {
+        strcpy( ptr4, ptr );
+        strcat( ptr4, ".NIC" );
+        return(1);
+      }
+      return(2);
+    }
+  }
+#else DEMO
+  _f_alert1( _msg_ptr[IED_MSGS-1] );
+#endif
+  return(0);
+}
+
+int nic_showinf( int wnum, char *file )
+{
+#ifndef DEMO
+  int hand, i;
+  char buf[7], temp[120];
+  unsigned int codelen;
+  
+  if( wnum>=0 )
+  {
+    (*_nac->bytecpy)( &iccreate, &nicinfo[wnum], sizeof(nicinfo[0]) );
+    icentries = num_new[i=ewind_type[wnum]];
+    if( nic_info( 1, wnum, 0L ) == 1 )
+    {
+      cksum[i]++;
+/*%      (*_icneo->redraw_obj)( _z->maximum, WMOVE ); */
+    }
+    (*_nac->bytecpy)( &nicinfo[wnum], &iccreate, sizeof(nicinfo[0]) );
+  }
+  else if( !strcmp( strrchr(file,'.'), ".NIC" ) && 
+      (*_nac->TOS_error)( hand=Fopen(file,2), 0 ) )
+  {
+    if( Fread(hand,7L,buf)==7L && *(long *)buf==0x2E4E4943 && 
+        buf[2] <= *(((int *)&icheader)+2) && Fseek( (unsigned)buf[6],
+        hand, 1 ) == (unsigned)buf[6]+7 && read_header( hand, &icentries,
+        &iccreate, &codelen ) )
+    {
+      strcpy( temp, file );
+      if( nic_info( 1, wnum, file ) )
+      {
+        key = KEY_START;
+        encrypt( &iccreate, &iccreate, sizeof(nicinfo[0]) );
+        Fseek( (unsigned)buf[6]+7+2, hand, 0 );
+        Fwrite( hand, sizeof(nicinfo[0]), &iccreate );
+        Fclose(hand);
+        (*_icneo->set_filename)( -1, -1, temp, file );
+        *(strrchr(temp,'\\')+1) = '\0';
+        (*_nac->update_drive)(temp);
+      }
+      return(0);
+    }
+    Fclose(hand);
+  }
+#endif DEMO
+  return(1);
+}
+
+int swap_icons( FSTRUCT *fs1, FSTRUCT *fs2 )
+{
+  ICONBLK *icb1, *icb2;
+  
+  if( fs1->type.p.pexec_mode < D_PROG || fs2->type.p.pexec_mode < D_PROG )
+  {
+    _f_alert1( _msg_ptr[32] );
+    return(1);
+  }
+  (*_nac->byteswap)( (icb1=fs1->ib)->ib_pmask, (icb2=fs2->ib)->ib_pmask,
+      MASKSIZ );
+  (*_nac->byteswap)( icb1->ib_pdata, icb2->ib_pdata, DATASIZ );
+  (*_nac->byteswap)( icb1->ib_ptext, icb2->ib_ptext, 12 );
+  (*_nac->byteswap)( (char *)icb1+12, (char *)icb2+12, sizeof(ICONBLK)-12 );
+  (*_nac->byteswap)( fs1, fs2, sizeof(FSTRUCT)-4 );
+  return(0);
+}
+
+int ic_reorder( FSTRUCT *wfile, int witems, char *reorder_on )
+{
+  int i, j, k, l;
+  char buf[13];
+  
+  if( !*reorder_on ) switch( _f_alert1( _msg_ptr[33] ) )
+  {
+    case 1:
+      for( i=D_PROG; i<witems; i++ )
+        for( j=(k=i)+1, l=0; j<witems; j++ )
+          if( (*_icneo->match)( wfile[j].name, wfile[k].name ) )
+          {
+            swap_icons( &wfile[k], &wfile[j] );
+            k = j;
+            l = -1;
+          }
+      return(l);
+    case 3:
+      return(0);
+  }
+  *reorder_on ^= 1;
+  return(1);
+}
+
+int use_imenu( int wnum, int num )
+{
+  int i, w;
+  
+  switch( num )
+  {
+    case IQUIT:
+      if( quit_iedit(0) ) return(1);
+      break;
+    case IABOUT:
+      rsrc_adr( IABOUTTX, _icneo->form );
+      (*_icneo->make_form)( -1, 0, 0L );
+      (*_icneo->make_fm_close)();
+      break;
+    case ICREATEN:
+      nic_info( 0, wnum, 0L );
+      break;
+    case ISAVENIC:
+      save_nic(wnum);
+      break;
+    case IRESETI:
+      if( quit_iedit(1) )
+      {
+        if( !ic_main( _icneo, 0 ) )
+        {
+          quitit(0);
+          return(1);
+        }
+        return(2);
+      }
+      break;
+    case IEDITPAT:
+      edit_desk();
+      break;
+    case IEDNEWIC:
+      if( add_icon(wnum) )
+        if( ewind_type[wnum] == EDW_ICONS ) update_icons();
+        else (*_icneo->first)(0);
+      break;
+    case IEDELALL:
+      if( wnum<0 || (w = ewind_type[wnum]) == EDW_ICONS )
+      {
+        if( (i=neo_icons+num_new[0]-D_PROG) != 0 )
+          if( !_z->conf_del || _f_alert1( _msg_ptr[34] ) == 1 )
+          {
+            num_new[0] -= i;
+            mem_len += i*(sizeof(ICONBUF)+2);  /* INTRFACE */
+            next_new = memory[0];
+            (*_icneo->get_all_icons)();
+            update_icons();
+          }
+      }
+      else if( num_new[w] && (!_z->conf_del || _f_alert1( _msg_ptr[35] ) == 1) )
+      {
+        clear_icons( w, 0 );
+        (*_icneo->first)(0);
+      }
+  }
+  return(0);
+}

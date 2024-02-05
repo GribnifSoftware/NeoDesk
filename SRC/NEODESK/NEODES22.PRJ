@@ -1,0 +1,32 @@
+;>>>>>>> DEFAULT.PRJ for use with single module programs <<<<<<<<
+
+neodes22.exe    ; name of executable program is topmost window
+; .C
+
+=                  ; list of modules follows...
+
+nd_asmx.s		; must come first!
+usemenux.c	( use_menu.c )
+dialogs.c
+d_03_0xx.c	( d_03_00x.c )
+macro.c
+xacc.c
+d_04_00x.c	( d_04_00.c )
+clip_302.c
+copy.c
+msgs.c [ -M ]
+lib\multevnt.o
+pointers.s
+inf_offs.c
+showpic.c
+floyd.c
+tiny.s
+guiinitx.c	( gui_init.c )
+cattgios.s
+
+PCSTDLIB.LIB       ; standard library
+PCTOSLIB.LIB       ; TOS library
+new_gem.LIB       ; AES and VDI library
+
+
+;>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>><<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<

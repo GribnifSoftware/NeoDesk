@@ -1,0 +1,13 @@
+neoload.prg
+
+=                  ; list of modules follows...
+
+pcSTARTn.o          ; startup code
+newtrap.s
+neoload.c
+
+pcSTDLIB.LIB       ; standard library
+pcTOSLIB.LIB       ; TOS library
+new_gem.LIB       ; AES and VDI library
+
+;>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>><<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<

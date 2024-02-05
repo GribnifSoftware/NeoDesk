@@ -1,0 +1,300 @@
+;  NEODESK2.MSG:  messages in the main program
+;
+;  Semi-colon (;) denotes a comment line. All comment lines should eventually
+;  be removed.
+;
+;  Sequences like "\0D" are translated from hexadecimal to ASCII. They
+;  must be in capital letters and numbers!
+;
+;  When translating alerts you MUST make sure that there are no more than
+;  30 characters between |'s, and no more than 4 |'s total (5 lines of text).
+;  Each button string must be no longer than 10 characters and all three
+;  buttons must be no more than 30 characters.
+;
+;  If you need to continue a message on to the next line, end the current one
+;  with a circumflex (^) character.
+;
+; *** Each string a MSG file must be less than 1100 characters long ***
+;
+[3][|Wollen Sie abbrechen?][Abbruch|Weiter]
+;** 2 strings in Filter dialog
+; starting with date formats MM/DD/YY, DD/MM/YY, etc
+MTJTMJJMTJTM
+ Format
+[0][Kopiere oder|verschiebe Objekte?|][Kopiere|Verschiebe|Abbruch]
+[1][Entweder wurde kein Batch-|prozessor ausgewÑhlt oder der|ausgewÑhlte ^
+existiert nicht!|PrÅfen Sie die|Voreinstellungen.][  Ok  ]
+;** %s expands to "moved" or "copied"
+[3][Dieser Vorgang wÅrde einen|Ordner in sich selbst|%sen und wird deshalb|^
+nicht ausgefÅhrt.][  Ok  ]
+verschieb
+kopier
+[1][|Drucker nicht bereit!][Nochmal|Abbruch]
+[1][Die Druckwarteschlange|NEOQUEUE.ACC ist nicht|vorhanden. Starten Sie ^
+Ihren|Rechner damit erneut.][  Ok  ]
+[1][Nur Laufwerke und Ordner|kînnen auf Laufwerke|kopiert werden.][  Ok  ]
+[1][Das Format des|Desktop Hintergrundbildes|ist unbekannt.][  Ok  ]
+[3][Das andere Objekt ist ein|Ordner. Geben Sie einen|anderen Namen ein oder ^
+lassen|Sie die Datei aus.][  Ok  ]
+[1][|%s konnte nicht|verschoben werden!][  Ok  ]
+[1][Zugriff verweigert! Sie|versuchen evtl. zu viele|Objekte im ^
+Wurzelverzeichnis|zuerzeugen.|(Diskette=112, Festplatte=256)][  Ok  ]
+[1][|Auf dem Laufwerk ist|nicht genug Platz fÅr|diese Operation!][  Ok  ]
+[3][NeoDesk interner Fehler #%d|Bitte starten Sie jetzt|den Rechner neu!][  Ok  ]
+Diese Diskette kann nicht|formatiert werden, da sie|defekte Sektoren enthÑlt
+[1][Diese Diskette ist|schreibgeschÅtzt.|Bitte entfernen Sie den|^
+Schreibschutz der Diskette.][Nochmal|Abbruch]
+[1][Das Laufwerk mit dem|Buchstaben dieses Icons|existiert nicht.][  Ok  ]
+[1][Der Laufwerksbuchstabe in|diesem Icon ist ungÅltig!][  Ok  ]
+ Es gibt mehr Objekte als dargestellt werden kînnen
+;** 003
+ %n Objekte%s in %N%s Byte%s
+;** This 's' gets added to messages like the one above to produce "items" and
+;** "bytes". It can be just left blank, but you must leave all %s's in the strings!
+s
+ %sErzeugt %s
+ %s%s | Modifiziert %s | R
+;** 003
+ %n selektierte Objekte in %N%s Byte%s
+;***** MICHAEL: translate these!!
+;***** DAN: Sorry about that. I must have accidentally skipped them.
+[1][NEODESK.RSC ist nicht im|selben Verzeichnis wie|NEODESK!|^
+NeoDesk muû verlassen werden!][  Ok  ]
+[3][Formatieren der Diskette in|Laufwerk %c lîscht alle|Informationen ^
+darauf.][Weiter|Abbruch]
+[1][Sie haben nicht genÅgend|Speicher fÅr diesen Vorgang.|][  Ok  ]
+[1][|Ein Laufwerk muû einen|Buchstaben haben!][  Ok  ]
+[1][|Ein Laufwerksbuchstabe|muû zwischen 'A' und 'Z' sein.][  Ok  ]
+[3][Die énderung wirkt erst nach|abspeichern von NEO_INF.DAT|^
+und dem Neustart von NeoDesk.][  Ok  ]
+Suchergebnisse
+[1][Es gibt keine %s.INF|Datei im selben Ordner wie|dieses Programm!][  Ok  ]
+[2][|%s ist schreibgeschÅtzt.|Lîschen trotzdem versuchen?][Lîschen|^
+Auslassen|Abbruch]
+[1][Eine Datei %s%s!|konnte nicht erzeugt werden.|Existiert eine solche ^
+Datei schon|schreibgeschÅtzt?][ Hmm... ]
+;** start of long line
+\3B.INF Datei... '\3B' kennzeichnet Kommentare und muû erstes Zeichen der Zeile sein\0D\0A^
+\3BAlle Datei- und Pfadnamen mÅssen in Groûbuchstaben geschrieben werden\0D\0A\3B\0D\0A^
+\3Bélteste NeoDesk-Version, die diese Datei lesen kann\0D\0A^
+%s\0D\0A^
+\3BAuflîsung: x,y,char_h\0D\0A^
+%d %d %d\0D\0A
+;** end of long line
+\3BAutoexec Datei
+\3BDrucker: type,FFD
+\3BControl: ampm,clock,save,mins,caches,repeat1,repeat2,click,bell,\0D\0A^
+\3B         mclick,floppyA,floppyB,volume/balance,treble/bass
+\3BFarbpalette: RRGGBB (16)
+\3BEinrasten: x,y,resort,overlap
+[1][|FÅr Bildschirmausdrucke muû|der Drucker grafikfÑhig sein.][  Ok  ]
+;** 003
+%N Byte%s
+;** 003
+%N (%N)
+;** Settings Menu entry. Second %s gets keyboard equivalent.
+  %-12s Neuladen %s
+[3][Der MÅlleimer kann nicht|geîffnet werden. Zu lîschende|^
+Objekte werden auf den|MÅlleimer gezogen.][  Ok  ]
+[1][Es stehen keine Fenster|mehr zur VerfÅgung!][  Ok  ]
+Konnte den Pfad dieser|Anwendung nicht Ñndern!
+FÅhre %s aus...
+\0D\0A\0D\0A\1BpMit beliebiger Taste oder Maustaste zurÅck zu NeoDesk\1Bq
+\0D\1Bp<Mehr>\1Bq
+\0D\0A\1Bf\1Bp\1Bb\2F\1Bc\20^
+Mit beliebiger Taste oder Maustaste zurÅck zu Desktop\1Bq\0D
+[1][Warnung:|Greifen Sie vor einer|Neuformatierung nicht mehr|^
+schreibend auf das|Ziellaufwerk zu!][  Ok  ]
+[1][|Die Datei %s konnte nicht|gefunden werden!][  Ok  ]
+[1][|Inkorrektes %s|Dateiformat!][  Ok  ]
+[3][|%s.INF Datei|nicht gefunden.|Benutze Voreinstellungen.][  Ok  ]
+[1][|Inkorrekte %s.INF Format!|Voreinstellungen werden|^
+wiederhergestellt!][  Ok  ]
+[1][Dieses Makro kann nicht|ausgefÅhrt werden weil sich|der Desktop^
+geÑndert hat.][  Ok  ]
+[1][|Es kann auf keine weiteren|Unterverzeichnisse|zugegriffen ^
+werden.][  Ok  ]
+[1][%s|(TOS Fehler #%D)][  Ok  ]
+[1][|TOS Fehler #%D][  Ok  ]
+Dieser Ordner kann nicht|verschoben werden, da|er nicht leer ist.
+[1][Bitte starten Sie|INSTALL.PRG von Ihrer|NeoDesk Originaldiskette.][  Ok  ]
+;** For the demo version, use this string instead:
+;** [2][Quitting this demo will|cause a warm-reset|of the computer][Quit|Stay]
+[2][|NeoDesk verlassen?][Ende|Weiter]
+[3][|Um einen Ordner umzubenennen|verschieben Sie ihn|innerhalb des Fensters][  Ok  ]
+[3][FÅr diese Auflîsung wurde|keine .INF vorgegeben.|Die Eingabe ^
+erfolgt mittels|"INF Dateien" im MenÅ|"Einstellungen".][  Ok  ]
+[3][|Nur Laufwerke kînnen auf|Laufwerke kopiert werden.][  Ok  ]
+[1][Nur Laufwerke, Dateien|und Ordner kînnen in den|MÅlleimer geworfen werden.][  Ok  ]
+[3][WARNUNG! Dieser Vorgang|wird alle Objekte des|Laufwerks %c ^
+dauerhaft|lîschen. Es folgt keine|weitere Warnung!][Lîschen|Abbruch]
+[3][Dieses Accessory ist nicht|im Speicher vorhanden.][  Ok  ]
+[3][|Diese Icon kann nicht in|einen Ordner kopiert werden.][  Ok  ]
+;** View Menu entries. I can fix the spacing for you later on.
+Groû Text |Klein Text|    %s        \07H
+Ú1 Spalte|1 Spalte |    %s         \07C
+umbenennen|kopieren|verschieben|Namenskonflikt beim %s:
+Kopiere/Verschiebe|Lîsche|%s Objekte
+Les|Schreib|Formatier|Twist|%se
+;** 003
+;***** MICHAEL: I changed this to "bis" it's the message "Copying sectors ## to ##"
+;***** DAN: Well done.
+%N bis %N
+[1][Dieser Dialog wird bereits|benutzt und es gibt keinen|^
+freien Speicher fÅr eine|Kopie davon.][Abbruch]
+ZÑhl|Les|Schreib|Verschieb|Lîsch|Erzeug|%se
+;** 003
+ROM Ver. %s  GEMDOS Ver. %x.%02x  AES Ver. %s
+; Inserted into dates: "Modified hh:mm:ss on mm/dd/yy"
+ am
+[3][Warnung!|Falls dieses Laufwerk eine|Festplatte ist, muû nach dem|^
+Kopiervorgang der Computer|neu gestartet werden][Weiter|Abbruch]
+[2][|%s im|%s|auf %s gefunden.][Zeigen|Auslassen|Abbruch]
+Ordner %s
+Wurzelverzeichnis
+[1][Keine passende|Datei gefunden|][  Ok  ]
+Lade %s.INF neu
+\3BExtender ausfÅhrbarer Programme: type,ext
+\3BDialog Positionen: #,x,y
+Gruppe sichern als...
+[3][Dieser Dialog wird|bereits benutzt][  Ok  ]
+[2][NEO_INF.DAT auf den|neuesten Stand bringen?][Ja|Nein]
+[1][Es gibt nicht genug|Speicher um so viele Dateien|ins Klemmbrett zu kopieren.][  Ok  ]
+;** Volume name in window. 20 chars max.
+Klemmbrett
+[1][Das kînnen Sie nicht mit|dem Klemmbrett nicht machen.|][  Ok  ]
+[3][Diese Aktion wird das|Klemmbrett entleeren.|][Weiter|Abbruch]
+;** Menu entry. Expands to "Begin Macro        ^Esc"
+Makro beginnen|Makro beenden |  %s         \5EEsc
+[1][Der Auflîsungswechsel|hat leider nicht geklappt.|][  Ok  ]
+[3][Bitte legen Sie die Diskette|mit %s in Laufwerk A ein.][Weiter|Abbruch]
+[1][%s ist entweder|inexistent oder defekt!][  Ok  ]
+[1][Dieser Vorgang kann|wÑhrend des neuordnens|nicht durchgefÅhrt werden.][  Ok  ]
+[3][Sind Sie sicher, daû Sie den|Inhalt dieses Ordners jetzt|dauerhaft ^
+neuordnen wollen?][Ordnen|Abbruch]
+[1][Die Diskette in diesem|Laufwerk wurde gewechselt|Die Objekte kînnen nicht|^
+neugeordnet werden.][  Ok  ]
+ Neuordnen
+[2][%s wurde geÑndert.|Rechner neustarten?][Neustarten|Abbruch]
+[1][Es gibt keinen Platz|mehr fÅr weitere Notizen.|][  Ok  ]
+[1][Es gibt keinen Platz|mehr fÅr weitere Makros.|Die Makroaufzeichnung|^
+muû abgebrochen werden.][  Ok  ]
+\3BHilfe: Font_id,Punkte,Zeilen,Spalten,x,y,Thema,Groû_klein,Alle,Pfad
+;** Must be exactly 20 characters. Use spaces on the end if less.
+<Default Makroname >
+[3][Dieser Vorgang kann im|Iconeditor nicht durchgefÅhrt|werden.][  Ok  ]
+[1][Es gibt nicht genug|freien Speicher um|dieses komprimierte|Bild ^
+darzustellen.][  Ok  ]
+Groûer|Kleiner|    %s Text
+Ú1 Spalte|1 Spalte |    %s
+Makro beginnen|Makro beenden |  %s
+\3BVerzeichnis ausdrucken
+[1][Dieser Dateiname enthÑlt|ein oder mehrere ungÅltige|Zeichen.][  Ok  ]
+[1][Diese Taste wurde|bereits mit einem|anderen Makro belegt][  Ok  ]
+;** 003
+%N Byte frei in %D Blocks
+;** 003
+Grîûter Block: %N Byte
+;** 40 char max
+Desktopnotiz editieren: Ende mit Return
+[3][Diese Makrodatei wird nicht|geladen weil derzeit ein|anderes Makro ^
+aufgezeichnet|wird.|Beenden Sie die Aufzeichnung.][  Ok  ]
+[3][Dies ist Diskette|#%d von %d.|Legen Sie die nÑchste|Diskette ein.][NÑchste|Abbruch]
+[2][Ein Fehler ist aufgetreten.|Betroffene Datei(en) ins|Klemmbrett ^
+kopieren?][Ja| Nein ]
+[1][%s existiert bereits|im Klemmbrett und kann deshalb|nicht Åberschrieben ^
+werden.][Abbruch]
+[3][Prozeû %s|mit Status #%d beendet|(%%s)][  Ok  ]
+<Unbekannt>
+Undefinierter Fehler
+;** Item selector titles
+Verzeichnisausdruck
+Filter laden
+Filter sichern
+;** Dialog titles
+Verzeichnisfilter
+Suchfilter
+Dateivorgangsfilter
+;** 003
+ %n Obejekt%s
+;** Blank, for future use
+
+ %d Selektierte Objekte
+Programm
+[2][Gruppe "%s"|wurde geÑndert.|énderung sichern?][Sichern|Verwerfen|Abbruch]
+;** 003
+%N von %N Byte frei
+;** 003
+%N von %N Byte frei
+;** 003
+%N von %N in Gebrauch
+;** Item selector titles
+Program fÅr NPI Datei:
+NPI Datei sichern:
+[2][Diese NPI Datei|wurde geÑndert.|énderung sichern?][Sichern|Verwerfen|Abbruch]
+[1][Auf dieses Laufwerk wird|bereits zugegriffen.][Abbruch]
+[3][Legen Sie die Diskette ein,|die vor der Unterbrechung des|Vorgangs im ^
+Laufwerk war!][Weiter|Abbruch]
+;** Item selector title
+Desktop Hintergrundbild:
+Lade Bild...
+[1][Wenn NeoDesk unter dieser|TOS-Version als Accessory|lÑuft, kînnen ^
+Programme nicht|ausgefÅhrt werden.][Abbruch]
+;** Default font name
+System
+\3BKopiere/Verschiebe/Lîsche: copy_mode,confirm_copies,confirm_deletes,\0D\0A^
+\3B      conf_over,diskcopy,diskcopy_back,copies,copy_back,del_back,\0D\0A^
+\3B      rename_dest,filt_copy,filt_del,count_copy,count_del
+;** 003: added onto end of this line
+\3BDiv: back_speed,tos_pause,unload,Control-Z_text,exit_status,quit_alert,\0D\0A^
+\3B      savecfg,other_prefs,date_fmt,speed_factor,numsep,open_fold,\0D\0A^
+\3B      view_fit,view_mode
+\3BFormat: tracks,sides,sectors/track,Twist,drive,backgrnd,spc(3)
+\3BBatchdatei Interpreter
+\3BTextviewer
+\3BFenster: placement,split,x,y,width,height,sliders,show_icons,lg/small\0D\0A^
+\3B         1+columns,show_size,date,time,sort,path
+\3BFenster Filter: flags,size_type,date,time,templ_mask,3 times,3 dates,\0D\0A^
+\3B                3 sizes,3 long templs
+\3BKopier/Verschiebe Filter
+\3BSuch Filter
+\3BVordefinierte Platzhalter (6)
+\3BParametervorgabe fÅr TTP: 5 Zeilen mit max. 38 Zeichen
+\3BEnvironment: use_argv,use_parent
+\3BDialoge: in_wind,pos_mode
+;** 003: added onto end of this line
+\3BDesktop: in_wind,window x,y,width,height,show_pic,wallpaper,color_mode,picture\0D\0A^
+\3B         fit_pic,pic_mode
+\3BFenster: fill,real_time,icon_id,icon_size,sm_id,sm_size,lg_id,lg_size,name_id,\0D\0A^
+\3B         name_size
+\3BIcons: type,x,y,letter,text,prog_type,prog_path
+;** 003: removed 2
+\3BAnwendungen: type,flags,extensions,name,path
+\3BEnvironment Variablen
+;** Set Video Mode (Falcon)
+Interlace
+Zeilenverdopplung
+;** Item Selector title (Parameters for execution dialog)
+AnzuhÑngender Dateiname:
+;** 003
+%N Byte%s, %s
+[1][Fehler in .NIC Dateiformat!|Die NIC Datei wurde so weit|wie mîglich ^
+eingelesen.][  Ok  ]
+[3][Dieser Vorgang wird die|laufende Dateioperation|^
+abgebrochen.][Abbrechen|ZurÅck]
+;** Yes, there is no ] at the end of these two!
+Der gewÑhlte Vorgang wird|an die Warteschlange angehangen.||[Schlieûen
+Klicken Sie auf ZurÅck um zum|vorherigen Dialog zurÅckzukehren||[ZurÅck
+;** form_do() equivalents for Undo keyboard key. You can have as many as you want,
+;** as long as each is in UPPERCASE and followed by two NULLs (\00\00).
+ABBRUCH\00\00ENDE\00\00VERLASSEN\00\00AUSGANG\00\00NEIN\00\00NO\00\00
+TOS Fehler #%d.
+;** 003: added the next two
+Zentriertes Desktopbild
+Bildanzeige Optionen
+;** The rest are for the demo version only. They can be left out of the real version.
+[3][NeoDesk 4 kann bei|Michael Nolte Computersysteme|Vasters Str. 10, ^
+50825 Kîln|bestellt werden.|Tel.: 0221-558269][  Ok  ]
+[3][Das System wird jetzt einen|Warmstart ausfÅhren.][  Ok  ]
+[3][Diese Funktion ist in der|Demoversion nicht vorhanden.][  Ok  ]
+;** end of NEODESK2.MSG

@@ -1,0 +1,16 @@
+gui.exe =
+
+gui\guiloadx.c	( gui\guiload.c ) ; must come first
+gui\graphics.c
+gui\graf.c
+gui\form_do.c
+gui\rsrc.c
+gui\objc.c
+gui\asm.s
+gui\menu.c
+gui\windows.c
+
+multevnt.o
+PCSTDLIB.LIB       ; standard library
+PCTOSLIB.LIB       ; TOS library
+new_gem.LIB       ; AES and VDI library

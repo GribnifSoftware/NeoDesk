@@ -1,0 +1,14 @@
+;>>>>>>> DEFAULT.PRJ for use with single module programs <<<<<<<<
+
+inf_load.prg    ; name of executable program is topmost window
+
+=                  ; list of modules follows...
+
+pcstartn.o
+inf_load.c
+multevnt.o
+pCSTDLIB.LIB       ; standard library
+pCTOSLIB.LIB       ; TOS library
+new_gem.LIB       ; AES and VDI library
+
+;>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>><<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<

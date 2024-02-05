@@ -1,0 +1,260 @@
+                     NeoDesk Recoverable Trashcan 1.3
+
+                                    by
+                                Dan Wilga
+
+         Copyright ½ 1990 Gribnif Software, All Rights Reserved.
+
+Description
+-----------
+
+    The NeoDesk Recoverable Trashcan is a special desk accessory which 
+  hooks directly into NeoDesk 3.  It adds to NeoDesk a brand new trashcan
+  which can restore any files that were deleted through it.
+
+
+Version 1.3 Notes
+-----------------
+
+    This version can be run as a "NeoDesk Program" by simply renaming its 
+  file ending to ".NPG".  Just rename it and drag the its icon to the 
+  desktop.  Use it as usual.
+
+
+Version 1.2 Notes
+-----------------
+
+    This new version corrects a problem with the Turbo C startup code which
+  would cause memory allocation errors.  This problem became evident when 
+  the trashcan was used with MultiDesk.
+
+
+Version 1.1 Notes
+-----------------
+
+    This new version has been recompiled with Borland's Turbo-C for smaller
+  size (and slightly faster speed).  It also corrects a bug that would 
+  occur if you tried deleting a "desktop" icon for a drive that had not had
+  its window opened yet.
+
+
+Installing it
+-------------
+
+    To install the Recoverable Trashcan accessory copy the TRASHCAN.ACC and
+  TRASHCAN.RSC files to your boot disk.  A boot disk is whatever disk you
+  normally utilize to turn on your computer.  This could be a hard disk or 
+  a floppy disk.  Consult your NeoDesk manual if you have any questions.
+
+    You then need to tell NeoDesk about this accessory.  This is done by 
+  entering its name (TRASHCAN) in the "Accessorries..." dialog box under 
+  the "Set Preferences..." menu entry.
+
+    Once you have installed both the Recoverable Trashcan accessory you 
+  can then reboot your system and load NeoDesk.  Once loaded you can open a
+  window to your boot disk and drag the TRASHCAN.ACC file to your desktop.
+  Make sure you place it in a convenient place on the desktop, since the
+  icon for the Recoverable Trashcan accessory will now become your new
+  trashcan.  You should also make sure your desktop under "Save 
+  Configuration..." so that the icon will remain there every time you
+  reboot the system.
+
+
+Operation
+---------
+
+    Use the Recoverable Trashcan just like the older standard trashcan.  
+  Any items (files or folders) you drag to it will be deleted from your
+  windows.  It works on hard disks, ram disks, and floppy disks.  The big
+  difference is that these deleted items will still be available "inside"
+  the trashcan.  You can access the trashcan contents by double-clicking on
+  the trashcan or opening its desk accessory entry under the "NeoDesk" 
+  menu.
+
+    You may also choose to remove the older trashcan (so you will not get 
+  confused and delete something in the wrong trashcan) by selecting it and 
+  choosing the "Remove" option under the "Install Desktop Icon..." menu 
+  entry.
+
+    You CANNOT use this new trashcan to 'remove' desktop icons from your 
+  desktop.  That is still a feature of the original trashcan.  The 
+  Recoverable Trashcan will attempt to delete the actual item associated
+  with any icon you drag to it, regardless of whether it is a desktop icon
+  or not.  You can still select any icon from the desktop and remove it
+  using the "Install Desktop Icon..." menu entry.
+
+    The contents of the trashcan are displayed in a special dialog box.  
+  The drive buttons to the right indicate what drive you are presently
+  looking looking at.  The scroll area to the left will list any deleted
+  items (files or folders) in that drive which can be recovered with the
+  Recoverable Trashcan.  These items are sorted alphabetically by path and
+  name.  Folders will be indicated by the standard "folder character" to
+  the left of any folder names.
+
+    If there are more items than fit in the scroll area you can use the 
+  arrows in the vertical scroll bar to see them.  In theory the 
+  Recoverable Trashcan can handle an unlimited number of deleted items per
+  drive.  The horizontal scroll bar lets you read any filenames which (due
+  to their long path) are too long to fit in the scroll area.
+
+    By clicking on the appropriate "d", "t", or "s" button you can change 
+  the display to the right of an item's name to show that item's date, 
+  time, or size.
+
+    If any items are displayed with a "gray field" over the filename that 
+  signifies that the items' paths no longer exist.  That means that when 
+  you restore them, you will have to create the folders that they require.
+  In color, this "gray field" is displayed with as a "red field".
+
+    There is also an option, to the right, to turn on or off the 
+  confirmation the trashcan gives every time you drag something to it.  
+  This option is permanently saved in the TRASHCAN.RSC file whenever you
+  change it and then quit out of the trashcan.
+
+    You can select any item or group of items by using the mouse.  Any item
+  you select will remain selected even if you scroll the list.  You can 
+  use the [Shift] key to add and remove single items from a group of items.
+  Selecting any item will turn on the two buttons at the lower part of the
+  dialog box, [Undelete] and [Delete Permanently].
+
+    The first option, Undelete, allows you to recover all the items that 
+  you have selected.  An item is restored to the same drive and folder as
+  where it was deleted from.  If there already is an item with the same
+  name as the deleted item you will receive a name conflict box.  At this
+  point you can either rename the file, skip that file, or abort the entire
+  operation.  There is also the possibility that the path of the deleted
+  item no longer exists.  In this case the trashcan will give you the 
+  option to create the folders needed to recover that item (or you can just
+  abort recovering it).
+
+    The second option, Delete Permanently, allows you to delete all the 
+  items you have selected from the Recoverable Trashcan.  This is similar 
+  to using the older standard trashcan.  Since you will be unable to
+  recover any items deleted with this option, use it with care.  Using this
+  command will also return any disk space that was used by deleted items.
+
+
+Usage
+-----
+
+    You should try to always make it a habit of deleting your files & 
+  folders through the Recoverable Trashcan.  That way there is less of a 
+  chance that you will accidentally delete an item that you did not mean 
+  to delete.
+
+    It is important to remember that deleted items (which are in the 
+  Recoverable Trashcan) will still consume valuable disk space.  You 
+  should check the trashcan at least once a week and delete any items that
+  you are not planning to recover.  If you run out of disk space you should
+  probably consider emptying out the trashcan.
+
+    You might even find it convenient to remove the built-in NeoDesk 
+  trashcan from the desktop so that you do not get confused and delete
+  something important by accident.
+
+    Remember that if you delete permanently a folder full of files NeoDesk
+  still has to delete every individual file inside of it one by one.  This 
+  means that very large folders might take some extra time to delete.  The
+  folder name will remain displayed in the Recoverable Trashcan while it is
+  busy deleting all of its contents.
+
+    The Recoverable Trashcan will temporarily delete any read-only files
+  without any additional warning.  When you select "Delete Permanently" it 
+  will then ask for confirmation before removing any read-only files
+  permanently.
+
+
+How it works
+------------
+
+    Whenever you delete a file or folder the Recoverable Trashcan deletes 
+  that item's name from the "file directory" leaving all of its sectors 
+  marked as "in use" so that no other file will overwrite it.  It then
+  writes to a hidden TRASHCAN.DAT file, in the root directory of that disk,
+  all the information needed to later recover that "deleted" item.  The
+  TRASHCAN.DAT file holds all the information for all the deleted items in
+  that particular drive.  If you delete or recover the last item in the
+  trashcan for that drive, the TRASHCAN.DAT file is removed.
+
+    By looking for a TRASHCAN.DAT file in any disk, the trashcan is able to
+  tell if any items have been deleted in that disk (and are waiting to be 
+  recovered).  With the data in that file it can then "undelete" any 
+  deleted items.  If there are no deleted items in a drive (waiting to be
+  restored) then there will be no TRASHCAN.DAT for that drive.
+
+    To delete an item permanently it actually restores the item first and
+  then erases it from the disk.  The restore stage is needed to insure that
+  everything is back to normal before it is actually deleted.  This method 
+  also assures that the Recoverable Trashcan never has to touch the very
+  sensitive File Allocation Table (FAT).
+
+
+Warning!
+--------
+
+    You should never attempt to reorganize or repair a drive using programs
+  like TuneUp, DL_II, or ICD CleanUp when you have files in the Recoverable
+  Trashcan!  These programs will interpret any deleted files, that are 
+  still inside the trashcan, as "lost clusters".  If you go ahead and
+  reorganize a disk with one of these programs or "fix" the lost clusters,
+  any deleted items (waiting to be recovered) will be lost or damaged.  
+  Also the information in the TRASHCAN.DAT file, for that drive, will no
+  longer be accurate.  Only use programs like TuneUp, DL_II, or ICD CleanUp
+  after you have emptied out the Recoverable Trashcan.
+
+    Because all the information for the deleted items of a disk is stored 
+  in a hidden TRASHCAN.DAT file you have to be careful that you do not copy
+  that file to another drive.  For example, the NeoDesk DiskCopy function
+  will copy the TRASHCAN.DAT if you use the "Files Only" function.  The
+  same effect is caused by dragging a disk icon to any open window.  If you
+  do so, the Recoverable Trashcan information for that disk (the one it was
+  copied to) will be inaccurate.
+
+    You can, however, perform disk copies as long as you use the "With 
+  Format" or "No Format" options.  In either case the TRASHCAN.DAT along 
+  with all the deleted items will be copied.  This is because those
+  commands make exact duplicates of the disk (an "image" copy), including
+  all of its contents.
+
+    Under the worst case scenario you will only lose the deleted items 
+  inside the trashcan.  You can always restore a drive back to its correct 
+  state (if for some reason the Recoverable Trashcan is not working 
+  correctly) by using a utility like TuneUp or DL_II to restore the "lost
+  clusters" and by deleting the hidden TRASHCAN.DAT file.
+
+
+TOS bug information
+-------------------
+
+    Because the Recoverable Trashcan requires that a "media change" be 
+  executed so that NeoDesk & TOS both realize that files have been deleted 
+  or recovered, there is the possibility that you may run into a nasty TOS
+  1.0/1.2 bug.
+
+    The bug occurs when special circumstances in a drive's file structure 
+  cause the system to crash whenever a media change is executed.  NeoDesk 
+  2.05 will execute a media change whenever you press [Esc] on any drive's
+  window.  Thus, you can see if any of your drives have this problem by
+  pressing [Esc] from NeoDesk 2.05 on each drive's window.  This problem
+  can also be caused if there are more than 98 folders in any directory.
+
+    You cannot use the Recoverable Trashcan on any drives showing this 
+  symptom.  If you do, the Recoverable Trashcan will attempt to detect 
+  this and tell you, though there is a chance that it might crash.  In
+  either case nothing will happen to any of your files.
+
+    This bug is related to the "40 Folder Bug" and is NOT fixed by FOLDRXXX
+  or any other 40 folder fix.  This problem was corrected in TOS 1.4 (and 
+  newer ROM versions).  Atari has admitted the problem and stated that the 
+  only solution is to "upgrade to TOS 1.4 or above".
+
+
+Disclaimer
+----------
+
+    As you would expect with software of this nature, we make no warranties
+  concerning the ability of this accessory to recover deleted items or to
+  perform as claimed.  The software is provided "as is" and you should 
+  only use it at your own risk.  We cannot be responsible of any loss of
+  data that results from the usage of this accessory.
+

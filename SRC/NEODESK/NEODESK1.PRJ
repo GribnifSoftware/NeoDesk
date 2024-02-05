@@ -1,0 +1,20 @@
+;>>>>>>> DEFAULT.PRJ for use with single module programs <<<<<<<<
+
+neodesk1.prg    ; name of executable program is topmost window
+
+=                  ; list of modules follows...
+
+PCSTARTn.O          ; startup code
+neodesk1.c
+neomasts.s
+neo1msgs.c [-M]
+;ft.s
+;nd_linea.c
+;nd_vdi.c
+nalloc.c
+decomp.s
+cattgios.s
+
+PCSTDLIB.LIB       ; standard library
+PCTOSLIB.LIB       ; TOS library
+new_gem.LIB       ; AES and VDI library

@@ -1,0 +1,16 @@
+;>>>>>>> DEFAULT.PRJ for use with single module programs <<<<<<<<
+
+iconedit.exe    ; name of executable program is topmost window
+
+=                  ; list of modules follows...
+
+iconedts.s
+iconedix.c (iconedit.c)
+;;neogemds.s
+iconmsgs.c [ -M ]
+
+pCSTDLIB.LIB       ; standard library
+pCTOSLIB.LIB       ; TOS library
+new_gem.LIB       ; AES and VDI library
+
+;>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>><<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<

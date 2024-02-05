@@ -1,0 +1,418 @@
+/* NeoDesk 3.01 by Dan Wilga
+   Copyright ½ 1990, Gribnif Software.
+   All Rights Reserved.
+*/
+	.import ic_main
+	.export StkLim
+
+	move.l	d1, StkLim		; THIS MUST BE FIRST ROUTINE!!
+	jmp	ic_main
+
+StkLim:	ds.l	1
+
+        .export icheader
+        .export icentries
+        .export iccreate
+        .export icmodify
+        .export icauth
+        .export iccomment
+        .export iccode
+        .export extract_icon
+        .export icon_list
+icheader:
+        dc.b    '.NIC'
+        dc.w    $0300
+        dc.b    67
+        dc.b    $4, $0, $0
+        dc.w    _Fseek-extract_icon, _Fread-extract_icon,
+        dc.b    'NeoDesk 4 Icon File format, Copyright ½1994 Gribnif Software'
+icentries:
+        ds.w    1
+iccreate:
+        ds.l    1
+icmodify:
+        ds.l    1
+icauth: ds.b    26
+iccomment:
+        ds.b    108
+iccode: ds.w    1
+extract_icon:
+extract_:
+        movem.l d3-d7/a2-a4, -(a7)             ;
+        lea.l   -$0042(a7), a7                 ;
+        move.w  d0, d4                         ;
+        moveq.l #$00, d3                       ;
+        move.w  d1, d3                         ;
+        movea.l a0, a2                         ;
+        clr.b   $0004(a2)                      ;
+        clr.b   $0003(a2)                      ;
+        move.l  #icon_list-icheader, d2                     ;
+        move.l  d3, d0                         ;
+        lsl.l   #5, d1                         ;
+        add.l   d3, d1                         ;
+        add.l   d1, d1                         ;
+        add.l   d1, d2                         ;
+        move.l  d2, d3                         ;
+        move.l  d2, -(a7)                      ;
+        move.w  d4, d1                         ;
+        move.l  d2, d0                         ;
+        clr.w   d2                             ;
+        bsr     _Fseek                          ;
+        cmp.l   (a7)+, d0                      ;
+        bne     A0001B0                        ;
+        lea.l   (a7), a0                       ;
+        moveq.l #$42, d1                       ;
+        move.w  d4, d0                         ;
+        bsr     _Fread                          ;
+        moveq.l #$42, d1                       ;
+        cmp.l   d0, d1                         ;
+        bne     A0001B0                        ;
+        moveq.l #$42, d0                       ;
+        lea.l   (a7), a0                       ;
+        bsr     unencryp                       ;
+        move.b  (a7), d0                       ;
+        cmp.b   (a2), d0                       ;
+        bls.b   A000078                        ;
+        moveq.l #-$03, d0                      ;
+        bra     A0001EA                        ;
+A000078:move.b  $0001(a7), d0                  ;
+        cmp.b   $0001(a2), d0                  ;
+        bls.b   A000088                        ;
+        moveq.l #-$04, d0                      ;
+        bra     A0001EA                        ;
+A000088:move.b  $0008(a2), d5                  ;
+        cmp.b   #$0F, d5                       ;
+        bls.b   A0000C6                        ;
+        move.b  $0002(a2), d5                  ;
+        cmp.b   #$02, d5                       ;
+        bhi.b   A0000CC                        ;
+        clr.w   d0                             ;
+        move.b  d5, d0                         ;
+        lsl.w   #4, d0                         ;
+        move.l  $12(a7,d0.w), d1               ;
+        bne.b   A0000B4                        ;
+        move.l  $1A(a7,d0.w), d2               ;
+        bne.b   A0000B4                        ;
+        moveq.l #-$06, d0                      ;
+        bra     A0001EA                        ;
+A0000B4:clr.w   d0                             ;
+        move.b  d5, d0                         ;
+        lea.l   d000306(pc), a0                    ;PC-relative
+        move.b  $00(a0,d0.w), d6               ;
+        moveq.l #$01, d7                       ;
+        bra.b   A0000D8                        ;
+A0000C6:move.l  $0012(a7), d0                  ;
+        bne.b   A0000D2                        ;
+A0000CC:moveq.l #-$05, d0                      ;
+        bra     A0001EA                        ;
+A0000D2:moveq.l #$02, d6                       ;
+        clr.b   d5                             ;
+        move.b  d5, d7                         ;
+A0000D8:clr.w   d3                             ;
+        move.b  (a7), d3                       ;
+        clr.w   d0                             ;
+        move.b  $0001(a7), d0                  ;
+        muls.w  d0, d3                         ;
+        add.w   d3, d3                         ;
+        clr.w   d2                             ; calc ea of data array now
+        move.b  d5, d2                         ;
+        lsl.w   #4, d2                         ;
+        lea.l   $12(a7,d2.w), a3               ;
+	; out = icon->data;
+        lea.l   $0018(a2), a4                  ;
+	; if( icon->planes&0xf )
+        moveq.l #$0F, d1                       ;
+        and.b   $0008(a2), d1                  ;
+        beq.b   A00015A                        ;
+        ;   if( icf.data[pl_ind][1] )
+        move.l  $4(a3), d1               ;
+        beq.b   A000118                        ;
+        movea.l a4, a0                         ;
+        move.w  d4, d0                         ;
+        bsr     read_im                        ;
+        movea.l a0, a4                         ;
+        move.l  a4, d0                         ;
+        beq     A0001B0                        ;
+        ori.b   #$10, $0003(a2)                ;
+        bra.b   A000126                        ;
+A000118:tst.b   d7                             ;
+        bne.b   A000126                        ;
+        move.w  d3, d0                         ;
+        movea.l a4, a0                         ;
+        bsr     clear_da                       ;
+        movea.l a0, a4                         ;
+        ;   if( icf.data[pl_ind][0] )
+A000126:move.l  (a3), d1               ;
+        beq.b   A000148                        ;
+        movea.l a4, a0                         ;
+        move.w  d4, d0                         ;
+        bsr     read_im                        ;
+        movea.l a0, a4                         ;
+        move.l  a4, d0                         ;
+        beq.b     A0001B0                        ;short branch
+        or.b    d6, $0003(a2)                  ;
+        bra.b   A00015A                        ;
+A000148:tst.b   d7                             ;
+        bne.b   A00015A                        ;
+        clr.w   d0                             ;
+        move.b  d6, d0                         ;
+        muls.w  d3, d0                         ;
+        movea.l a4, a0                         ;
+        bsr     clear_da                       ;
+        movea.l a0, a4                         ;
+A00015A:move.b  $0008(a2), d0                  ;
+        and.b   #$F0, d0                       ;
+        beq.b   A0001CC                        ;
+        ;   if( icf.data[pl_ind][3] )
+        move.l  12(a3), d1               ;
+        beq.b   A000188                        ;
+        movea.l a4, a0                         ;
+        move.w  d4, d0                         ;
+        bsr     read_im                        ;
+        movea.l a0, a4                         ;
+        move.l  a4, d0                         ;
+        beq.b   A0001B0                        ;
+        ori.b   #$10, $0004(a2)                ;
+        bra.b   A000196                        ;
+A000188:tst.b   d7                             ;
+        bne.b   A000196                        ;
+        move.w  d3, d0                         ;
+        movea.l a4, a0                         ;
+        bsr     clear_da                       ;
+        movea.l a0, a4                         ;
+        ;   if( icf.data[pl_ind][2] )
+A000196:move.l  8(a3), d1               ;
+        beq.b   A0001BA                        ;
+        movea.l a4, a0                         ;
+        move.w  d4, d0                         ;
+        bsr.b     read_im                        ;short branch
+        movea.l a0, a4                         ;
+        move.l  a4, d0                         ;
+        bne.b   A0001B4                        ;
+A0001B0:moveq.l #-$02, d0                      ;
+        bra.b   A0001EA                        ;
+A0001B4:or.b    d6, $0004(a2)                  ;
+        bra.b   A0001CC                        ;
+A0001BA:tst.b   d7                             ;
+        bne.b   A0001CC                        ;
+        clr.w   d0                             ;
+        move.b  d6, d0                         ;
+        muls.w  d3, d0                         ;
+        movea.l a4, a0                         ;
+        bsr     clear_da                       ;
+        movea.l a0, a4                         ;
+A0001CC:move.w  (a7), (a2)                     ;
+        clr.b   $0005(a2)                      ;
+        move.w  $0002(a7), $0006(a2)           ;
+        lea.l   $0005(a7), a0                  ;
+        lea.l   $0009(a2), a1                  ;
+        move.b	(a0)+, (a1)+	; copy type
+        move.l	(a0)+, (a1)+	; copy string
+        move.l	(a0)+, (a1)+
+        move.l	(a0)+, (a1)+
+        clr.b	-1(a1)
+        clr	d0
+        move.b	4(a7), d0	; get colors
+        ror	#4, d0		; isolate just the data color
+        move.b	d0, 1(a1)
+        rol	#4, d0
+        andi.b	#$f, d0
+        move.b	d0, (a1)	; isloate just the blank color
+A0003:  clr.w   d0                             ;
+A0001EA:lea.l   $0042(a7), a7                  ;
+        movem.l (a7)+, d3-d7/a2-a4             ;
+        rts                                    ;
+read_im:movem.l d3-d5/a2-a3, -(a7)             ;
+        lea.l   -$0206(a7), a7                 ;
+        move.w  d0, d4                         ;
+        movea.l a0, a3                         ;
+        move.l  d1, d3                         ;
+        clr.w   d2                             ;
+        move.l  d1, d0                         ;
+        move.w  d4, d1                         ;
+        bsr     _Fseek                          ;
+        cmp.l   d0, d3                         ;
+        bne.b   B00023C                        ;
+        lea.l   $0202(a7), a0                  ;
+        moveq.l #$03, d1                       ;
+        move.w  d4, d0                         ;
+        bsr     _Fread                          ;
+        moveq.l #$03, d1                       ;
+        cmp.l   d0, d1                         ;
+        bne.b   B00023C                        ;
+        move.w  $0202(a7), d5                  ;
+        move.w  d5, d0                         ;
+        ext.l   d0                             ;
+        move.l  d0, -(a7)                      ;
+        lea.l   $0004(a7), a0                  ;
+        move.l  d0, d1                         ;
+        move.w  d4, d0                         ;
+        bsr     _Fread                          ;
+        cmp.l   (a7)+, d0                      ;
+        beq.b   B000242                        ;
+B00023C:suba.l  a0, a0                         ;
+        bra     B0002D6                        ;
+B000242:move.w  d5, d0                         ;
+        ext.l   d0                             ;
+        lea.l   (a7), a2                       ;
+        movea.l a2, a0                         ;
+        bsr     unencryp                       ;
+        moveq.l #$03, d0                       ;
+        and.b   $0204(a7), d0                  ;
+        bne.b     B0002D0                        ;short branch
+        asr.w   #2, d5                         ;
+        bra.b   B000266                        ;
+B000264:move.l  (a2)+, (a3)+                   ;
+B000266:subq.w  #1, d5                         ;
+        bpl.b   B000264                        ;
+        bra.b   B0002D4                        ;
+B00026C:move.b  (a2)+, d0                      ;
+        move.b  d0, d1                         ;
+        and.b   #$C0, d1                       ;
+        bne.b   B00028A                        ;
+        and.b   #$3F, d0                       ;
+        move.b  d0, d2                         ;
+        ext.w   d2                             ;
+        addq.w  #1, d2                         ;
+        sub.w   d2, d5                         ;
+B000282:move.b  (a2)+, (a3)+                   ;
+        subq.b  #1, d0                         ;
+        bpl.b   B000282                        ;
+        bra.b   B0002D0                        ;
+B00028A:cmp.b   #$40, d1                       ;
+        bne.b   B0002A0                        ;
+        and.b   #$3F, d0                       ;
+        move.b  (a2)+, d1                      ;
+        subq.w  #1, d5                         ;
+B000298:move.b  d1, (a3)+                      ;
+        subq.b  #1, d0                         ;
+        bpl.b   B000298                        ;
+        bra.b   B0002D0                        ;
+B0002A0:cmp.b   #$80, d1                       ;
+        bne.b   B0002D4                        ;
+        move.b  d0, d1                         ;
+        ext.w   d1                             ;
+        asr.w   #4, d1                         ;
+        and.b   #$03, d1                       ;
+        addq.b  #1, d1                         ;
+        ext	d1
+        sub	d1, d5
+        subq	#1, d5
+        moveq.l #$0F, d2                       ;
+        and.b   d2, d0                         ;
+        addq.b  #1, d0                         ;
+B0002C0:move.b  d1, d2                         ;
+        movea.l a2, a0                         ;
+B0002C4:move.b  (a0)+, (a3)+                   ;
+        subq.b  #1, d2                         ;
+        bpl.b   B0002C4                        ;
+        subq.b  #1, d0                         ;
+        bpl.b   B0002C0                        ;
+        movea.l a0, a2                         ;
+B0002D0:subq.w  #1, d5                         ;
+        bpl.b   B00026C                        ;
+B0002D4:movea.l a3, a0                         ;
+B0002D6:lea.l   $0206(a7), a7                  ;
+        movem.l (a7)+, d3-d5/a2-a3             ;
+        rts                                    ;
+unencryp:
+        moveq	#$37, d1
+        bra.b   C0002F0                        ;
+C0002E8:eor.b   d1, (a0)+                      ;
+        addi.b  #$21, d1                       ;
+C0002F0:subq.l  #1, d0                         ;
+        bpl.b   C0002E8                        ;
+        rts                                    ;
+clear_da:
+        asr.w   #2, d0                         ;
+        bra.b   D0002FC                        ;
+D0002FA:clr.l   (a0)+                          ;
+D0002FC:subq.w  #1, d0                         ;
+        bpl.b   D0002FA                        ;
+        rts                                    ;
+_Fseek:
+        pea	(a2)
+        move.w  d2, -(sp)
+        move.w  d1, -(sp)
+        move.l  d0, -(sp)
+        move.w  #$42, -(sp)
+        trap    #1
+        lea     10(sp), sp
+        movea.l (sp)+, a2
+        rts
+_Fread:
+        pea	(a2)
+        pea	(a0)
+        move.l  d1, -(sp)
+        move.w  d0, -(sp)
+        move.w  #$3f, -(sp)
+        trap    #1
+        lea     12(sp), sp
+        movea.l (sp)+, a2
+        rts
+
+d000306:dc.b    $01
+        dc.b    $02
+        dc.b    $04
+iconkey:
+        ds.b    1
+icon_list:
+
+/******
+        .export _lineaa
+        .export _linea9
+        .export _linea5
+        .export _linea1
+        .export _linea3
+
+regs reg d0/a0-a2
+
+_linea1:         movem.l #regs, -(sp)
+                .dc.w   $a001
+                movem.l (sp)+, #regs
+                rts
+                
+_linea3:         movem.l #regs, -(sp)
+                .dc.w   $a003
+                movem.l (sp)+, #regs
+                rts
+                
+_linea5:         movem.l #regs, -(sp)
+                .dc.w   $a005
+                movem.l (sp)+, #regs
+                rts
+                
+
+_linea9:         movem.l #regs, -(sp)
+                .dc.w   $a009
+                movem.l (sp)+, #regs
+                rts
+                
+_lineaa:         movem.l #regs, -(sp)
+                .dc.w   $a00a
+                movem.l (sp)+, #regs
+                rts
+       *******/
+                
+        .export _memclr
+
+_memclr:tst.l   d0
+        beq.b   mc4
+        move.l  a0, d2
+        btst    #0, d2
+        beq.b   mc0
+        clr.b   (a0)+
+        subq.l  #1, d0
+mc0:    moveq.l #4, d1
+mc2:    cmp.l   d1, d0
+        blo.b   mc1
+        clr.l   (a0)+
+        subq.l  #4, d0
+        bra.b   mc2
+mc1:    tst     d0
+mc3:    beq.b   mc4
+        clr.b   (a0)+
+        subq    #1, d0
+        bra.b   mc3
+mc4:    rts
+

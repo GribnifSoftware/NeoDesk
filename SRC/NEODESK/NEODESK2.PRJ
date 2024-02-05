@@ -1,0 +1,45 @@
+;>>>>>>> DEFAULT.PRJ for use with single module programs <<<<<<<<
+
+neodesk2.exe    ; name of executable program
+
+=                  ; list of modules follows...
+
+PCSTART.O          ; startup code
+dialogs.c
+use_menu.c
+d_03_00x.c
+showpic.c
+floyd.c
+tiny.s
+copy.c
+xacc.c
+d_04_00.c
+macro.c
+iconedit.c
+iconmsgs.c [ -M ]
+iconedts.s
+clip_302.c
+lib\multevnt.o
+nd_asm.s
+msgs.c [ -M ]
+inf_offs.c
+settings.c
+pointers.s
+gui_init.c
+gui\guiload.c	; must come first
+gui\graphics.c
+gui\graf.c
+gui\form_do.c
+gui\rsrc.c
+gui\objc.c
+gui\asm.s
+gui\menu.c
+gui\windows.c
+help\help.c (help\fontlist.c)
+cattgios.s
+
+PCSTDLIB.LIB       ; standard library
+PCTOSLIB.LIB       ; TOS library
+new_gem.LIB       ; AES and VDI library
+
+;>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>><<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<

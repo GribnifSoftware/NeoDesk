@@ -1,0 +1,97 @@
+General Operations
+
+Both SHIFT keys	Abort current operation
+CONTROL-C	Abort current operation
+Undo		Abort current operation
+Right SHIFT key	Don't deselect icons after operation
+CONTROL-(1-0)	Open NeoDesk Desk Accessory
+CONTROL- -	Open NeoDesk Control Panel
+CONTROL-=	Open NeoDesk Printer Queue
+CONTROL-LEFT SHIFT-ALT-keypad .	Reset mouse on/off
+CONTROL-LEFT SHIFT-ALT-keypad *	Reset screen colors
+CONTROL-LEFT SHIFT-ALT-Enter	Perform a wind_update(END_UPDATE) call
+CONTROL-B	Open batch processor
+
+Desktop
+
+(a-z)	Select/open desktop icon with this letter
+SHIFT-(A-Z)	Select/open disk drive
+CONTROL-Left Click and hold	View item's path
+CONTROL-Double-click	Open new window to item's path
+CONTROL-Left Click on desktop window close box	Terminate desk accessory (Geneva/MultiTOS required)
+
+Desktop Notes Editing
+
+Double-click	Enter Desktop Notes editor
+Esc	Clear line
+LEFT ARROW	Move cursor left
+RIGHT ARROW	Move cursor right
+SHIFT-LEFT ARROW	Move cursor to start of line
+SHIFT-RIGHT ARROW	Move cursor to end of line
+Backspace	Delete character to left of cursor
+Delete	Delete character to right of cursor
+Return	End edit
+Enter	End edit
+
+Opening Icons
+
+ALT	Show file instead of executing
+ALT-LEFT SHIFT	Toggle Parameters dialog (open program)
+
+Viewing a Text File
+
+CONTROL-Z	Toggle pagination
+Clr/Home	Beginning of file
+UP ARROW	Up one page
+DOWN ARROW	Down one page
+Space	Down one page
+Return	Down one line
+Enter	Down one line
+CONTROL-M	Down one line
+CONTROL-C	End
+Undo	End
+Esc	End
+Q	End
+
+Dialogs
+
+SHIFT	In a windowed dialog, when selecting the "Ok" button, apply the
+changes but leave the dialog open
+[Also add all the stuff from the Geneva manual about editable fields and
+cancelling dialogs, Help, etc. here]
+
+Windows
+
+CONTROL-Clr/Home	Go to root directory
+Clr/Home	Scroll to top
+SHIFT-Clr/Home	Scroll to bottom
+UP ARROW	Scroll up one line
+DOWN ARROW	Scroll down one line
+SHIFT-UP ARROW	Scroll up one page
+SHIFT-DOWN ARROW	Scroll down one page
+CONTROL-Left Click	Rename item
+CONTROL-SHIFT-Left Click	Rename multiple items
+CONTROL-Left Click on Close box	Close window
+CONTROL-Double-click	Open new window to group item's path
+
+If Geneva Is Not Present
+
+[Add all the stuff from the Geneva manual about kbd window ops here]
+
+File Search Mode
+
+Tab	Enter search mode/switch to next window
+Return	Open icon
+Enter	Open icon
+Backspace	Back up one letter
+
+Copy/Move/Delete
+
+CONTROL-SHIFT-ALT	Move items
+SHIFT	Toggle wait for confirmation of the operation
+CONTROL	Temporarily toggle Confirm Overwrites
+
+Drawing in Icon Editor
+
+SHIFT-Click	Reset pixel
+Click with both buttons	Reset pixel

@@ -1,0 +1,41 @@
+  Dialogs in NeoDesk 4. Information copyright 1994, Gribnif Software.
+  Subject to change without notice.
+
+    FILTER   
+    TOSTAKES 
+    NEWFOLD  
+    FILEINF  
+    FOLDINF  
+    DISKINF  
+    INSTALL  Install/remove dtop icon
+    ENVIRON  
+    FILENAME 
+    APPLIC   Install app
+    FILECONF 
+    FOLDCONF 
+    COPYMODE By files, no format, etc.
+    NEWNAME  Rename dest.
+    PREFER   File prefs
+    MEMORY   
+    FLFORMAT 
+    GRID     
+    SAVEINF  
+    PREFPATH 
+    ACCLIST  
+    INFLIST  
+    EXTENS   
+    DIRPRN   
+    MACRODEF 
+    TTREZ    
+    MOREPREF Misc prefs
+    DIALPREF 
+    DESKPREF 
+    WINPREF  
+    FILEOP   Copy/Move/Delete
+    GRPNAME  New Group, etc.
+    GRPITEM  Edit Item in Group
+    DOPSTAT  Disk copy/format status
+    ENVEDIT  Low rez edit env var
+    EDITNPI  
+    NOTEPREF 
+    FYI      "For your information"

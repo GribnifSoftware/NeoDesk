@@ -1,0 +1,12 @@
+neo_cli.ttp        ; name of executable program is topmost window
+=                  ; list of modules follows...
+;;;TCnSTART.o          ; startup code
+neo_clis.s
+lib\calwsave.s
+lib\multevnt.s
+*                  ; compile topmost window
+pCSTDLIB.LIB       ; standard library
+pCTOSLIB.LIB       ; TOS library
+new_gem.LIB       ; AES and VDI library
+
+;>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>><<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<

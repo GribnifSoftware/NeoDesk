@@ -1,0 +1,283 @@
+;  NEODESK2.MSG:  messages in the main program
+;
+;  Semi-colon (;) denotes a comment line. All comment lines should eventually
+;  be removed.
+;
+;  Sequences like "\0D" are translated from hexadecimal to ASCII. They
+;  must be in capital letters and numbers!
+;
+;  When translating alerts you MUST make sure that there are no more than
+;  30 characters between |'s, and no more than 4 |'s total (5 lines of text).
+;  Each button string must be no longer than 10 characters and all three
+;  buttons must be no more than 30 characters.
+;
+;  If you need to continue a message on to the next line, end the current one
+;  with a circumflex (^) character.
+;
+; *** Each string a MSG file must be less than 1100 characters long ***
+;
+[3][|Do you want to abort?][Abort|Continue]
+;** 2 strings in Filter dialog; starting with date formats MM/DD/YY, DD/MM/YY, etc
+MDYDMYYMDYDM
+ format
+[0][   Copy or Move items?    |][Copy|Move|Cancel]
+[1][Either you have not chosen|a batch file processor or|the one^
+ you chose does|not exist! Please check the|Set Preferences item.][Oops!]
+;** %s expands to "moved" or "copied"
+[3][Sorry, this operation would|result in a folder being|%sed into^
+ itself and|therefore cannot be performed.][Hmph!]
+mov
+copi
+[1][|Printer not ready!][Retry|Cancel]
+[1][The printer queue,|NEOQUEUE.ACC is not present.|Please^
+ re-boot with this|file in the root directory.][Ok]
+[1][Only disk drives and|folders can be copied|to other disk drives][Ok]
+[1][|Unrecognized desktop|picture format][Ugh]
+[3][The other item is a folder.|Please either enter a new|name or hit Skip][Ok]
+[1][|%s could not|be moved!][Ok]
+[1][Access denied! You may be|trying to create more than the|maximum number^
+ of items|in the root directory.|(floppy=112, hard disk=256)][Ok]
+[1][|There is not enough room on|the disk for this operation!][Ok]
+[3][NeoDesk internal error #%d|Please re-boot NOW!][Will do...]
+This disk cannot be|formatted because it|contains bad sectors
+[1][The disk in this drive is|write-protected. Please move|the write-protect^
+ tab if|you wish it to be modified.][Retry|Cancel]
+[1][The drive whose|letter appears in this|icon does not exist.][Hm!]
+[1][Invalid drive|letter in icon!][Oh?]
+ There are more items than can be displayed
+;** 003
+ %n item%s in %N%s byte%s
+;** This 's' gets added to messages like the one above to produce "items" and
+;** "bytes". It can be just left blank, but you must leave all %s's in the strings!
+s
+ %sCreated %s
+ %s%s | Modified %s | R
+;** 003
+ %n selected items in %N%s byte%s
+[1][NEODESK.RSC is not in the|same directory as NEODESK!|NeoDesk must quit!][Ok]
+[3][Formatting the disk in|drive %c will erase all|information on it^
+][Continue|Cancel]
+[1][You do not have|enough free memory for|this operation][Ok]
+[1][|A disk drive MUST|have a letter!][Ok]
+[1][|A disk drive letter|can only be from|'A' to 'Z'][Ok]
+[3][The change you have made will|not take effect until you save|NEO_INF.DAT^
+ and re-run NeoDesk][OK]
+Search Results
+[1][There is no %s.INF|file in the same folder|as this program!][Ok]
+[2][|%s is read-only.|Try to delete it anyway?][Delete|Skip|Cancel]
+[1][Could not create a|%s%s file!|Is there one there|in read-only mode?][Um...]
+;** start of long line
+\3B.INF file... '\3B' is a comment char and must be the first on the line\0D\0A^
+\3BAll filenames and paths must be uppercase\0D\0A\3B\0D\0A^
+\3BOldest NeoDesk that can read this file\0D\0A^
+%s\0D\0A^
+\3BResolution: x,y,char_h\0D\0A^
+%d %d %d\0D\0A
+;** end of long line
+\3BAutoexec file
+\3BPrinter: type,FFD
+\3BControl: ampm,clock,save,mins,caches,repeat1,repeat2,click,bell,\0D\0A^
+\3B         mclick,floppyA,floppyB,volume/balance,treble/bass
+\3BColor pallette: RRGGBB (16)
+\3BSnap to grid: x,y,resort,overlap
+[1][|You need to use a graphics|printer for a screen dump][Oh!]
+;** 003
+%N byte%s
+;** 003
+%N (%N)
+;** Settings Menu entry. Second %s gets keyboard equivalent.
+  Reload %-12s  %s
+[3][The trashcan cannot be opened.|You can, however,^
+ drag a file,|folder, or disk icon here to|delete its contents.][Ok]
+[1][There are no more|windows available!][Hm!]
+Could not change to the|path of this application!
+Executing %s...
+\0D\0A\0D\0A\1BpPress any key or mouse button to return to NeoDesk\1Bq
+\0D\1Bp<More>\1Bq
+\0D\0A\1Bf\1Bp\1Bb\2F\1Bc\20^
+Press any key or mouse button to return to the desktop\1Bq\0D
+[1][Warning:|Do not write to the|destination disk again|^
+without re-formatting!][Ok...]
+[1][|Could not find the file|%s!][Urgh]
+[1][|Incorrect %s file format!][Hm!]
+[3][|No %s.INF file found.|Using defaults.][Ok]
+[1][|Incorrect %s.INF format!|Restoring defaults!][Hm!]
+[1][This macro cannot be|executed because the|desktop has changed][Ok]
+[1][|No further subdirectories|   can be accessed.][Ok]
+[1][%s|(TOS error #%D)][Ok]
+[1][|TOS error #%D][Ok]
+This folder could not|be moved because it|is not empty
+[1][Please run INSTALL.PRG|on your original NeoDesk|disk.][Bye-Bye]
+;** For the demo version, use this string instead:
+;** [2][Quitting this demo will|cause a warm-reset|of the computer][Quit|Stay]
+[2][|Quit NeoDesk?][Quit|Stay]
+[3][|To rename a folder, "move"|it within the same window][Ok]
+[3][No default .INF file has been|specified for this resolution.|Please ^
+select one by using|".INF Files..." in|"Set Preferences..."][Ok]
+[3][|Only disk drives can be copied|to other disk drives][Oh!]
+[1][Only disk drives, files|and folders can be dragged|to the trashcan][Ok]
+[3][WARNING!! This operation|will permanently delete|all items on Drive ^
+%c!|This is your only warning!][Delete|Cancel]
+[3][This desk accessory is|not active in memory][Bleh!]
+[3][|This icon cannot be|copied to a folder][Oh!]
+;** View Menu entries. I can fix the spacing for you later on.
+Large|Small|    %s Text       \07H
+\F21 Column|1 Column |    %s        \07C
+rename|copy|move|Name conflict during %s:
+Copy/Move|Delete|%s items
+Read|Writ|Formatt|Twist|%sing
+;** 003
+%N to %N
+[1][This dialog is already in|use and there is no free|^
+memory for a copy of it][Cancel]
+Count|Read|Writ|Mov|Delet|Creat|%sing
+;** 003
+ROM ver. %s  GEMDOS ver. %x.%02x  AES ver. %s
+; Inserted into dates: "Modified hh:mm:ss on mm/dd/yy"
+ on
+[3][Warning!|It may be necessary to|re-boot after this diskcopy|if the^
+ destination is a hard|disk][Continue|Cancel]
+[2][|Found %s in|%s of %s][Show|Skip|Abort]
+folder %s
+the root
+[1][|No match found][Ok]
+Reload %s.INF
+\3BExecutable Extensions: type,ext
+\3BDialog Positions: #,x,y
+Save group as...
+[3][This dialog is|already in use][Ok]
+[2][Update NEO_INF.DAT|to contain the new|information?][Yes|No]
+[1][There is not enough memory|available to copy this many|files to the ^
+clipboard][Ok]
+;** Volume name in window. 20 chars max.
+Clipboard
+[1][|This operation cannot be|performed on the Clipboard][Ok]
+[3][|Taking this action will cause|the Clipboard to be emptied]^
+[Continue|Cancel]
+;** Menu entry. Expands to "Begin Macro        ^Esc"
+Begin Macro|End Macro  |  %s           \5EEsc
+[1][|The resolution|change failed][Ok]
+[3][Please insert your boot disk|containing %s into|drive A][Continue|Cancel]
+[1][Either there is no|%s or it is|corrupted!][Ok]
+[1][This operation cannot|be performed when in|Reorder mode][Ok]
+[3][Are you sure you want to|permanently reorder the|items in this directory?]^
+[Reorder|Cancel]
+[1][The disk in this drive|has changed. The items|cannot be reordered][Ok]
+ Reorder
+[2][%s has been|modified. Re-boot now?][Reboot|Cancel]
+[1][There is no more room|left for desktop notes][Ok]
+[1][There is no more room|left for macros. Macro|recording must terminate][Ok]
+\3BHelp: font_id,point,rows,cols,x,y,topic,match_case,all,path
+;** Must be exactly 20 characters. Use spaces on the end if less.
+<Default Macro Name>
+[3][This operation cannot|be performed when in|the icon editor][Ok]
+[1][There is not enough free|memory to display this|compressed picture][Ok]
+Large|Small|    %s Text
+\F21 Column|1 Column |    %s
+Begin Macro|End Macro  |  %s
+\3BPrint directory
+[1][This filename contains|one or more invalid|characters][Ok]
+[1][|This key is already|assigned to a macro][Ok]
+;** 003
+%N bytes free in %D blocks
+;** 003
+largest block is %N bytes
+;** 40 char max
+Edit Desktop Note: Press Return to exit
+[3][This macro file will not|actually be loaded because a|^
+macro is being recorded now.|Please end the macro.][Ok]
+[3][|This is disk #%d of %d.|Insert the next disk.][Next|Cancel]
+[2][An error has occurred.|Copy the file(s) into|the file clipboard?][Yes|No]
+[1][%s already|exists in the clipboard|and can therefore not|be overwritten.][Cancel]
+[3][Process %s|exited with status #%d|(%%s)][Ok]
+<Unknown>
+undefined error
+;** Item selector titles
+Directory listing
+Load filter
+Save filter
+;** Dialog titles
+Directory filter
+Search filter
+File operation filter
+;** 003
+ %n item%s
+;** Blank, for future use
+
+ %d selected items
+Program
+[2][Group "%s" has|changed. Save it?][Save|Abandon|Cancel]
+;** 003
+%N of %N bytes free
+;** 003
+%N of %N bytes free
+;** 003
+%N out of %N in use
+;** Item selector titles
+Program for NPI file:
+Save NPI file:
+[2][This NPI file has|changed. Save it?][Save|Abandon|Cancel]
+[1][This disk drive is|currently in use and|cannot be accessed][Cancel]
+[3][Make sure the original disk|this operation was being|performed on ^
+before pausing|is in the drive now!][Continue|Cancel]
+;** Item selector title
+Desktop background picture:
+Loading picture...
+[1][Programs cannot be executed|when NeoDesk is run as a desk|^
+accessory with this version|of TOS][Cancel]
+;** Default font name
+System
+\3BCopy/move/del: copy_mode,confirm_copies,confirm_deletes,conf_over,\0D\0A^
+\3B               diskcopy,diskcopy_back,copies,copy_back,del_back,\0D\0A^
+\3B               rename_dest,filt_copy,filt_del,count_copy,count_del
+;** 003: added onto end of this line
+\3BMisc: back_speed,tos_pause,unload,Control-Z_text,exit_status,quit_alert,\0D\0A^
+\3B      savecfg,other_prefs,date_fmt,speed_factor,numsep,open_fold,\0D\0A^
+\3B      view_fit,view_mode
+\3BFormat: tracks,sides,sectors/track,Twist,drive,backgrnd,spc(3)
+\3BBatch file interp.
+\3BText viewer
+\3BWindows: placement,split,x,y,width,height,sliders,show_icons,lg/small\0D\0A^
+\3B         1+columns,show_size,date,time,sort,path
+\3BWindow filters: flags,size_type,date,time,templ_mask,3 times,3 dates,\0D\0A^
+\3B                3 sizes,3 long templs
+\3BCopy/del filter
+\3BSearch filter
+\3BPre-defined templates (6)
+\3BDefault TTP params.: 5 lines of up to 38 chars
+\3BEnvironment: use_argv,use_parent
+\3BDialogs: in_wind,pos_mode
+;** 003: added onto end of this line
+\3BDesktop: in_wind,window x,y,width,height,show_pic,wallpaper,color_mode,picture\0D\0A^
+\3B         fit_pic,pic_mode
+\3BWindows: fill,real_time,icon_id,icon_size,sm_id,sm_size,lg_id,lg_size,name_id,\0D\0A^
+\3B         name_size
+\3BIcons: type,x,y,letter,text,prog_type,prog_path
+;** 003: removed 2
+\3BApplications: type,flags,extensions,name,path
+\3BEnvironment strings
+;** Set Video Mode (Falcon)
+Interlace
+Double line
+;** Item Selector title (Parameters for execution dialog)
+File name to append:
+;** 003
+%N byte%s, %s
+[1][Error in .NIC file format!|As much of the NIC file as|possible has been read][Ok]
+[3][Taking this action will|terminate the current|file operation][Terminate|Return]
+;** Yes, there is no ] at the end of these two!
+The operation you just requested|will be added to the queue||[Close
+Click below to return to the|dialog you were just using||[Return
+;** form_do() equivalents for Undo keyboard key. You can have as many as you want,
+;** as long as each is in UPPERCASE and followed by two NULLs (\00\00).
+CANCEL\00\00QUIT\00\00EXIT\00\00ABORT\00\00NO\00\00
+TOS error #%d.
+;** 003: added the next two
+Centered desktop picture
+Picture viewer options
+;** The rest are for the demo version only. They can be left out of the real version.
+[3][NeoDesk 4 can be ordered|from Gribnif Software at|413-532-2434][Ok!]
+[3][|The system will now|perform a warm-reset][Ok]
+[3][This feature has been|disabled for the demo|version.][Ok]
+;** end of NEODESK2.MSG
+

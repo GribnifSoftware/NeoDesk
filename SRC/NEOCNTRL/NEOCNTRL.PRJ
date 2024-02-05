@@ -1,0 +1,14 @@
+neocntrl.prg       ; name of executable program is topmost window
+
+=                  ; list of modules follows...
+
+pcSTARTn.O          ; startup code
+clkjmp.s
+multevnt.o
+
+neocntrl.c
+pcSTDLIB.LIB       ; standard library
+pcTOSLIB.LIB       ; TOS library
+new_gem.LIB       ; AES and VDI library
+
+;>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>><<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<

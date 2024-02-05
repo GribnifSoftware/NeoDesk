@@ -1,0 +1,48 @@
+;  NEODESK1.MSG:  messages in the shell
+;
+;  For information about translations, see NEODESK2.MSG
+;
+Die Daten dieses Laufwerks|sind evtl. defekt! Prfen|Sie die Verbindungen und^
+|legen Sie eine Diskette ein.
+Laufwerk nicht bereit!|Bitte Diskette einlegen.
+Dieses Laufwerk|ist schreibgeschtzt.
+Die ursprngliche Diskette|wurde entfernt.
+|Diese Ger„t existiert nicht.
+|Diese Diskette enth„lt einen|oder mehrere defekte Sektoren.
+Control-C wurde gedrckt oder|es wurde eine ungltige|Funktion aufgerufen
+|Datei nicht gefunden
+|Pfad nicht gefunden
+Es sind schon zu|viele Dateien offen
+Zugriff verweigert. Dies ist|eine schreibgeschtzte oder|offene Datei ^
+oder ein offener Ordner
+Fr diesen Vorgang gibt es|nicht genug freien Speicher
+Dieses Laufwerk scheint|nicht zu existieren
+Dies ist anscheinend kein|ausfhrbares Programm
+; The ? 's get replaced at run time
+[1][NEOLOAD.PRG Version ?.0?|wird von dieser Version|von NEOLOAD.EXE ^
+ben”tigt][Abbruch]
+\1BJ\0D\0AAnwendung beendet mit Status %d
+Die Umlenkungsdatei existiert|schon mit Schreibschutz
+[1][%s|(TOS Fehler #%D)][Ok]
+[1][|TOS Fehler #%D][Ok]
+Der Hilfepfad dieser Anwendung|konnte nicht erreicht werden
+NEODESK.EXE ist defekt|oder fehlt!
+\0D\0A\0D\0A\1BpZurck zu NeoDesk mit beliebiger Taste oder Maustaste\1Bq
+Neuladen...
+[3][Konnte NEODESK.EXE nicht auf|dieser Diskette finden.|Bitte legen Sie ^
+die Diskette|in Laufwerk %c ein.][Weiter|Ende]
+[NeoDesk benutzen
+[1][Inkompatible|NEO_INF.DAT Datei][Schade]
+[1][Das Programm konnte nicht|ge”ffnet werden.][Ok]
+von Dan Wilga
+Alle Rechte vorbehalten.
+Release
+Registriert fr:
+Jede Verwendung, Vervielf„ltigung, Vermietung oder
+Verkauf dieses Produkts, die entgegen der NeoDesk
+Lizenzvereinbarung stattfindet ist verboten und
+wird rechtlich verfolgt.
+[3][Dieser Vorgang ben”tigt|mehr Speicher als laut|Speicherdialog ^
+zul„ssig ist.|Fortfahren?][Weiter|Abbruch]
+[1][Es gibt nicht genug|freien Speicher fr|diesen Vorgang.][Abbruch]
+;*** end of NEODESK1.MSG ***

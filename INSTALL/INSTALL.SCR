@@ -1,0 +1,113 @@
+; NeoDesk 4 Installation script. Copyright 1994, Gribnif Software.
+source  Master Disk
+dest    Destination
+dtitle NeoDesk 4 Installation
+echo NeoDesk 4 Installation Program||^
+This program will copy any or all of|^
+the main NeoDesk files to a new disk.||^
+Continue with the installation?
+ask Continue
+askend
+askdrive
+untilex %sdrive:\neodesk4\neodesk.exe Master Disk
+ifex %sdrive:\install1.dat
+  echo If you use the disk cache TCACHE, you must|^
+disable it for Drive A: before proceeding!
+  ask Continue
+  askend
+  gem %sdrive:\install1.dat
+ifend
+echo Ready to install NeoDesk 4 files to drive %ddrive.||^
+You will need at least 500K of free space.||^
+If this is a floppy disk drive, please be sure|^
+to have a formatted, double-sided disk ready.||^
+Press Return to continue...
+ask Continue
+askend
+COPY NEODESK4\NEODESK.EXE NEODESK4\NEODESK.EXE
+COPY NEODESK4\NEODESK.RSC NEODESK4\NEODESK.RSC
+COPY NEODESK4\NEODESK.HLP NEODESK4\NEODESK.HLP
+COPY NEODESK4\HELP.RSC NEODESK4\HELP.RSC
+COPY NEODESK4\SETTINGS.RSC NEODESK4\SETTINGS.RSC
+COPY NEODESK4\ICONEDIT.RSC NEODESK4\ICONEDIT.RSC
+COPY NEODESK4\NEOICONS.NIC NEODESK4\NEOICONS.NIC
+COPY NEODESK4\NEOLOAD.PRG NEODESK4\NEOLOAD.PRG
+echo ^
+NeoDesk can be set to run automatically whenever|^
+your computer restarts. However, setting this up|^
+varies greatly depending on your computer's ROM|^
+version. Please consult your computer's|^
+documentation for more information.||^
+If you use Geneva, you can set NeoDesk to run|^
+automatically by re-running Geneva's INSTALL.PRG.
+ask Continue
+askend
+echo In the following dialog, please select the|^
+drive containing your AUTO folder
+ask Continue
+askend
+dinfo1 Choose the letter of your
+dinfo2 boot (AUTO folder) disk:
+askdrive
+swapdest Boot Disk
+COPY NEODESK4\NEOLOAD.PRG AUTO\NEOLOAD.PRG
+copy JARXXX\JARXXX.PRG AUTO\JAR10.PRG
+copy JARXXX\AUTOFRST.TTP AUTO\AUTOFRST.TTP
+flush
+ifex %dpathAUTO\XBOOT.PRG
+  tos %dpathAUTO\AUTOFRST.TTP %dpathAUTO\XBOOT.PRG JAR10.PRG
+ifend
+ifnex %dpathAUTO\XBOOT.PRG
+  tos %dpathAUTO\AUTOFRST.TTP %dpathAUTO\JAR10.PRG
+ifend
+rm %dpathAUTO\AUTOFRST.TTP
+askend
+flush
+echo In the following selector, please choose the|^
+location of your desk accessories.|^
+For floppy drive users, this is usually A:\.|^
+For hard drives, this is usually C:\.
+ask Continue
+askend
+destsel %dpath*.ACC Desk accessory path:
+swapdest Boot Disk
+echo ^
+The NeoDesk Control Panel will let you change|^
+various settings that affect the general|^
+appearance of your system. Among these settings|^
+are the system date and time, the screen colors,|^
+and the mouse double-click rate.||^
+Do you want to install the NeoDesk Control Panel?
+ask Install|Skip
+  button1
+    COPY ACC\NEOCNTRL.ACC NEOCNTRL.ACC
+    COPY ACC\NEOCNTRL.RSC NEOCNTRL.RSC
+askend
+echo The NeoDesk Printer Queue will print files|^
+automatically while you use your computer for|^
+other tasks.||^
+Do you want to install the NeoDesk Printer Queue?
+ask Install|Skip
+  button1
+    COPY ACC\NEOQUEUE.ACC NEOQUEUE.ACC
+    COPY ACC\NEOQ_C.RSC NEOQ_C.RSC
+    COPY ACC\NEOQ_M.RSC NEOQ_M.RSC
+askend
+echo The NeoDesk Recoverable Trashcan desk|^
+accessory will give you a new trashcan that can|^
+"undelete" files that have been deleted by it.||^
+Install the Recoverable Trashcan?
+ask Install|Skip
+  button1
+    COPY TRASHCAN\TRASHCAN.ACC TRASHCAN.ACC
+    COPY TRASHCAN\TRASHCAN.RSC TRASHCAN.RSC
+    echo Please refer to page 135 for further steps that|^
+must be performed in order to use the Trashcan.
+    ask Continue
+    askend
+askend
+flush
+bell
+echo Installation complete! Enjoy NeoDesk 4!
+pause 3
+exit

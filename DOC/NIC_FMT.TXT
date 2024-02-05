@@ -1,0 +1,707 @@
+12/30/90  NeoDesk Icon File (.NIC) formats
+
+[Original statement of confidentiality removed by DW, 9/20/20.]
+
+
+NeoDesk 1.0 through 2.02 icon file format
+-----------------------------------------
+
+Nine icons, each arranged sequentially as follows:
+
+  112 bytes of data, in ICONBLK format
+  112 bytes of mask, in ICONBLK format
+  2 bytes, X-offset of icon letter
+  2 bytes, Y-offset of icon letter
+  2 bytes, X-offset of icon within OBJECT  (not used)
+  2 bytes, Y-offset of icon within OBJECT  (not used)
+
+Each icon requires:  232 bytes
+Total size:         2088 bytes
+
+
+NeoDesk 2.03 through 2.05 icon file format
+------------------------------------------
+
+  112 bytes of data, in ICONBLK format
+  112 bytes of mask, in ICONBLK format
+  12 bytes containing the search template, if any (see below)
+  2 bytes, X-offset of icon letter
+  2 bytes, Y-offset of icon letter
+  2 bytes, X-offset of icon within OBJECT  (not used)
+  2 bytes, Y-offset of icon within OBJECT  (not used)
+
+Each icon requires:  244 bytes
+Total size:          244*number of icons
+
+The first nine icons are always the "default" icons, and so the file must
+be atleast 2196 bytes long.
+
+
+Distinguishing icon file format
+-------------------------------
+
+The only way of determining whether a NIC file is in 1.0 or 2.03 format is
+to examine the file size. If the length of the file is exactly 2088 bytes,
+then it is a 1.0 file. If the length is evenly divisible by 244, then it is
+a 2.03. Any other size can be assumed to be a bad NIC file, though it might
+be best to assume that it is a 2.03, since NIC files uploaded to BBS' with
+the XMODEM protocol without first having been put into an archive will have
+a file length that is divisble by 128.
+
+
+Search Template format
+----------------------
+
+For 2.03 NIC files, all icons after the ninth have a search template
+associated with them (this string is meaningless for the first nine icons
+in a 2.03 NIC file and should not be used.) It is in the following format:
+
+   |            name               | extension |NUL|
+   |   |   |   |   |   |   |   |   |   |   |   |$00|
+
+The name and extension are left-justified within the fields and filled
+with the ASCII space character. The string ends with a NUL (ASCII 0).
+An example would be the template "FOO.*", which would be stored as:
+
+   | F | O | O |$20|$20|$20|$20|$20| * |$20|$20|$00|
+
+In the case of 1.0 NIC files, as well as the first nine icons in a 2.03
+NIC file, the following is always true:
+
+   Icon         Type
+   ----         ----
+    1           Floppy Disk
+    2           Hard Disk
+    3           RAM Disk
+    4           Printer
+    5           Trashcan
+    6           Folder
+    7           Program
+    8           Text (other)
+    9           Batch File
+
+
+NeoDesk 3 icon file format
+--------------------------
+
+The file format was substantially changed for NeoDesk 3 so that it could be
+made compatible with virtually any icon size, number of bitplanes, etc. and
+at the same time be recognizible by versions of NeoDesk which may not need
+this extra information. This is accomplished by including code within the
+NIC file, itself, to extract the icons. A program wishing to extract icons
+from a NIC file need only call this code.
+
+The format of the file header follows. A Number in () denotes the length of
+the field in bytes:
+
+  Magic (4):                      .NIC
+  Version number of oldest NeoDesk that can read this file:
+                                  0x0300
+  Length of copyright notice (1)  59
+  Copyright notice (xx):          NeoDesk Icon File Format, Copyright ½ 1990
+      (must be odd length)        Gribnif Software
+  Total number of entries (2) (unsigned) (encrypt)
+  Creation Date/Time (4) (encrypt, restart key) (GEMDOS format)
+  Modification Date/Time (4) (encrypt) (GEMDOS format)
+  Author (26) (encrypt) (NUL-terminated)
+  Comment (108) (encrypt) (3 NUL-terminated strings of 36 bytes each)
+  Length of extraction code (2) (encrypt, restart key)
+  Extraction code
+
+The encryption key begins at 0x37 and 0x21 is added after each byte that is
+encrypted/decrypted. A given byte is the key XORed with the encrypted byte.
+
+In order to read a .NIC file, the following procedure should be used:
+
+  1. Verify that the first four bytes are the magic, ".NIC".
+  2. Verify that the version number is correct (0x300). This field is
+     present just in case there need to be further changes to the file
+     format that would cause difficulty for older versions of NeoDesk;
+     with any luck, it will always be 0x300.
+  3. Skip past the copyright notice.
+  4. Read and decrypt the number of entries in the file.
+  5. Read and decrypt the creation date and time, modification date and time,
+     author, and comment fields.
+  6. Read and decrypt the length of the extraction code.
+  7. Allocate a block of memory large enough to hold the extraction code and
+     read the code into memory.
+  8. For each icon in the range 0..(number_of_icons-1):
+     1. Initialize the NEO_ICON structure.
+     2. Call the extraction code.
+     3. Take appropriate action if an error condition exists.
+
+
+The following structure is used to distinguish the type of icon:
+
+  typedef union
+  {
+    unsigned char i;
+    struct
+    {
+      folder:1;
+      file:1;
+      dflt:6;
+    } type;
+  } ICON_TYPE;
+
+  If both the "file" and "folder" bits are zero, then the icon is a desktop
+  pattern. If "dflt" is -1, then the icon is not a default icon. If it is
+  if not -1, then it signifies the default icon type, from 0-10:
+
+    0           Floppy Disk
+    1           Hard Disk
+    2           RAM Disk
+    3           Clipboard
+    4           Printer
+    5           Trashcan
+    6           Folder
+    7           Program
+    8           Text (other)
+    9           Batch File
+  [10		Group (NeoDesk 4.00 or newer only)]
+
+The extraction code extracts an icon using the following structure:
+
+  #define MAX_PLANES 2    /* These numbers are for ND 3.00-3.02 */
+  #define MAX_W      2    /* width in words */
+  #define MAX_H      32   /* height in pixels */
+  #define MAX_DATA   (MAX_PLANES*MAX_W*MAX_H)
+  typedef struct
+  {
+    unsigned char size_x, size_y;
+    unsigned char ignore[4];
+    unsigned char xchar, ychar;
+    unsigned char planes;
+    unsigned char type;   /* use ICON_TYPE to convert */
+    char text[12];        /* see old icon format for details */
+    unsigned char colors[MAX_PLANES];
+    int data[MAX_DATA];
+  } NEO_ICON;
+
+Extraction code receives the following parameters:
+  A0:  Pointer to NEO_ICON structure to extract to
+  D0:  GEMDOS file handle of open NIC file
+  D1:  Index of icon to extract
+It returns:
+  0:  Success
+  -2: Error in file format
+  -3: Icon is too large in x direction
+  -4: Icon is too large in y direction
+  -5: Icon contains too many bitplanes
+  [-6: No icon data for the requested resolution (NeoDesk 4 format)]
+
+The NEO_ICON structure whose pointer is passed MUST have size_x set to
+MAX_W, size_y set to MAX_H, and planes set to MAX_PLANES before calling
+the extract code. The index passed in D1 must be in the range of 0 to
+the total number of icons minus 1. Any undefined return code can be assumed
+to indicate an error condition; these may happen in future versions of the
+extraction code.
+
+Data is stored one bitplane at a time. Extracted data consists of the data for
+each bitplane, with the icon "mask" (if any) first, by convention. Each
+bitplane is stored in a manner identical to that used for the ICONBLK structure.
+The color table contains the color index of a given bitplane. This
+corresponds to the index contained in the "ib_pcolor" field of an ICONBLK.
+
+The following is a sample of code that can be used to extract icons from a
+NeoDesk 3 icon file. Calling the extraction code depends on the Turbo C
+compiler's method of parameter passing in order to get the parameters into
+the appropriate registers. An assembly language routine will be necessary
+for other compilers.
+
+/* This contains various info about the NIC file */
+struct
+{
+  long create, modify;
+  char auth[26], comment[3][36];
+} nicinfo;
+
+#define KEY_START 0x37
+char key;
+/* encrypt/decrypt "size" bytes, starting at "from", copying to "to" */
+void encrypt( void *from, void *to, long size )
+{
+  while( --size >= 0 )
+  {
+    *((char *)to)++ = *((char *)from)++ ^ key;
+    key += 0x21;
+  }
+}
+
+/* Read the NIC file header. Non-zero means success */
+int read_header( int hand, unsigned int *entries, void *ni,
+                 unsigned int *codelen )
+{
+  char buf[sizeof(nicinfo)+4];
+
+  if( Fread( hand, sizeof(buf), buf ) == sizeof(buf) )
+  {
+    key = KEY_START;
+    encrypt( buf, entries, 2 );
+    key = KEY_START;
+    encrypt( buf+2, ni, sizeof(nicinfo) );
+    key = KEY_START;
+    encrypt( buf+2+sizeof(nicinfo), codelen, 2 );
+    return(1);
+  }
+  return(0);
+}
+
+/* Read the NIC file whose GEMDOS file handle is "hand". Returns zero
+   if error. */
+int read_new_nic( int hand )
+{
+  int err, i, buf[4];
+  unsigned int codelen, entries, entry;
+  char *code;
+  NEO_ICON ni;
+  ICON_TYPE it;
+  unsigned char skip;
+
+  /* Read magic and version. Is magic ".NIC"? Is version correct? */
+  if( Fread( hand, 7L, buf ) != 7L || *(long *)buf != 0x2E4E4943 ||
+      buf[2] > 0x300 )
+  {
+    Cconws( "Not a NeoDesk 3 .NIC file." );
+    return(0);
+  }
+  /* Get number of bytes to skip in copyright message */
+  skip = *(unsigned char *)&buf[3];
+  if( Fseek( skip, hand, 1 ) != skip+7L )
+  {
+    Cconws( "File truncated." );
+    return(0);
+  }
+  /* Read file header */
+  if( read_header( hand, &entries, &nicinfo, &codelen ) )
+  {
+    err=0;
+    if( (code=Malloc(codelen)) == 0 )
+    {
+      Cconws( "Not enough memory for extraction code." );
+      return(0);
+    }
+    else
+    {
+      /* Read extraction code */
+      if( Fread( hand, codelen, code ) != codelen ) err++;
+      else
+      {
+        /* Read each icon in file */
+        for( entry=0; entry<entries && !err; entry++ )
+        {
+          /* This MUST be re-initialized before each extraction */
+          ni.size_x = MAX_W;
+          ni.size_y = MAX_H;
+          ni.planes = MAX_PLANES;
+          /* Call extraction code. You'll need an assembly routine for
+             compilers other than Turbo C */
+          i = (*(int (*)( int h, int ent, NEO_ICON *ni ))code)
+              ( hand, entry, &ni );
+          /* Only abort if -2, otherwise ignore the error because it most
+             likely means the icon doesn't fit. */
+          if( i == -2 ) err++;
+          else if( !i )
+          {
+            /* Do whatever with "ni". */
+          }
+        }
+      }
+      Mfree(code);
+    }
+  }
+  if( err )
+  {
+    Cconws( "Error in .NIC file format." );
+    return(0);
+  }
+  return(1);
+}
+
+The following assembly routine can be used to call the extraction code if
+using a compiler other than Turbo C. Call it with the line:
+  extract( code, hand, entry, &ni );
+
+; parameters:  code location    handle    entry    icon
+;                  4(sp)         8(sp)    10(sp)  12(sp)
+extract:
+        move.w  8(sp), d0
+        move.w  10(sp), d1
+        movea.l 12(sp), a0
+        movea.l 4(sp), a1
+        jsr     (a1)
+        rts                     ; d0 now contains the return code
+
+NeoDesk 4.00 Extensions
+-----------------------
+
+If the first byte of the copyright message is 0x04, then a NIC file is in NeoDesk 4 format.
+This offers the ability to load in separate images as part of the same icon,
+in up to 4 bitplanes, and with different selected and unselected images.
+
+If the "planes" field of the NEO_ICON structure is set to a value greater than
+15, then the code knows that your program is aware of the new format.
+The high nybble is taken to mean the number of planes of selected icon
+data to read; the low nybble indicates the number of normal (unselected) icon data
+planes. The "readicon" element must be set to either 0 (1 plane), 1 (2 plane), or 2 (4 plane), to
+indicate the resolution of the icon to read.
+
+Once the icon has been read, the "planes" field is changed to reflect
+the actual number of bitplanes of normal and selected data (excluding the mask) actually read. Icon data
+is read in contiguous planes (VDI format) into the "data" segment, in the following
+order:
+					Normal image
+  if( (planes&0xF) != 0 )	mask  (MAX_W*MAX_H words)
+  				data  (MAX_W*MAX_H*((planes&0xF) words)
+  --------------------------------------------------------------------
+  					Selected image
+  if( (planes&0xF0) != 0 )	mask  (MAX_W*MAX_H words)
+  				data  (MAX_W*MAX_H*((planes&0xF0)>>4) words)
+
+In general, if there is normal icon data, there is always a normal icon mask; if there is selected
+icon data, there is always a selected icon mask. NeoDesk 4.00 happens to always write
+normal icon data and mask. However, there may not be any selected icon data.
+
+Loading a NeoDesk 4 NIC file will always set the "colors" to white mask and
+black data. These are of no use when reading color icons anyway, and are just
+for backward compatibility with NeoDesk 3.
+
+NeoDesk 4 also adds another default icon, the Group icon, which uses index 10.
+
+  #define MAX_PLANES4 4    /* 4 data planes */
+  #define MAX_W       2    /* width in words */
+  #define MAX_H       32   /* height in pixels */
+  #define MAX_DATA4   ((MAX_PLANES4+1)*MAX_W*MAX_H*2)
+         /* (4 data planes + 1 mask plane) * (normal + seleced) */
+  #define OLD_PLANES 2	   /* planes in a Neo 3 file */
+  #define MAX_SIZE4   ((MAX_PLANES4<<4)|MAX_PLANES4)
+  typedef struct
+  {
+    unsigned char size_x, size_y;
+    unsigned char readicon;	/* set to 0, 1, or 2 (2, 4, 16 planes) */
+    unsigned char norm_read, sel_read;	/* changed to number of planes read */
+    unsigned char unused;
+    unsigned char xchar, ychar;
+    unsigned char planes;      /* set to MAX_SIZE4 before calling */
+    unsigned char type;              /* use ICON_TYPE to convert */
+    char text[12];            /* see old icon format for details */
+    unsigned char colors[OLD_PLANES];
+    int data[MAX_DATA4];
+  } NEO_ICON;
+
+/* Read the NIC file whose GEMDOS file handle is "hand". Returns zero
+   if error. */
+int read_new_nic( int hand )
+{
+  int err, i, rez, buf[4], *ptr, planes[] = { 1, 2, 4 }, pl_size;
+  unsigned int codelen, entries, entry;
+  char *code, ver, neo4;
+  NEO_ICON ni;
+  ICON_TYPE it;
+  unsigned char skip;
+  CICON cicon[3];	/* place to store 3 sets of icon data/mask */
+
+  /* Read magic and version. Is magic ".NIC"? Is version correct? */
+  if( Fread( hand, 7L, buf ) != 7L || *(long *)buf != 0x2E4E4943 ||
+      buf[2] > 0x300 )
+  {
+    Cconws( "Not a NeoDesk 3 .NIC file." );
+    return(0);
+  }
+  /* Get NeoDesk 4 version flag */
+  Fread( hand, 1L, &ver );
+  neo4 = ver == '\x4';
+  /* Get number of bytes to skip in copyright message */
+  /* Skip one less because we just read the version */
+  skip = *(unsigned char *)&buf[3] - 1;
+  if( Fseek( skip, hand, 1 ) != skip+7L )
+  {
+    Cconws( "File truncated." );
+    return(0);
+  }
+  /* Read file header */
+  if( read_header( hand, &entries, &nicinfo, &codelen ) )
+  {
+    err=0;
+    if( (code=Malloc(codelen)) == 0 )
+    {
+      Cconws( "Not enough memory for extraction code." );
+      return(0);
+    }
+    else
+    {
+      /* Read extraction code */
+      if( Fread( hand, codelen, code ) != codelen ) err++;
+      else
+      {
+        /* Read each icon in file */
+        for( entry=0; entry<entries && !err; entry++ )
+          for( rez=0; rez<3; rez++ )
+          {
+            /* This MUST be re-initialized before each extraction */
+            ni.size_x = MAX_W;
+            ni.size_y = MAX_H;
+            ni.planes = neo4 ? MAX_SIZE4	/* Neo 4 format: use 0x44 */
+                : OLD_PLANES;			/* Otherwise use 2 */
+            if( neo4 ) ni.readicon = rez;	/* resolution to read */
+            /* Call extraction code. You'll need an assembly routine for
+               compilers other than Turbo/Pure C */
+            i = (*(int (*)( int h, int ent, NEO_ICON *ni ))code)
+                ( hand, entry, &ni );
+            /* Only abort if -2, otherwise ignore the error because it most
+               likely means the icon doesn't fit. */
+            if( i == -2 ) err++;
+            else if( !i )
+            {
+              pl_size = ni.size_x * ni.size_y;
+              cicon[rez].num_planes = planes[rez];
+              if( !neo4 )
+              {
+                cicon[rez].col_mask = &ni.data[0];
+                cicon[rez].col_data = &ni.data[pl_size];
+              }
+              else
+              {
+                ptr = &ni.data[0];
+                /* clear out current values */
+                memset( &cicon[rez].col_data, 0, 4*sizeof(long) );
+                if( ni.norm_read & 0xF0 )
+                {	/* has a normal mask */
+                  cicon[rez].col_mask = ptr;
+                  ptr += pl_size;
+                }
+                if( ni.norm_read & 0x0F )
+                {	/* has normal data */
+                  cicon[rez].col_data = ptr;
+                  ptr += planes[rez]*pl_size;
+                }
+                if( ni.sel_read & 0xF0 )
+                {	/* has a selected mask */
+                  cicon[rez].sel_mask = ptr;
+                  ptr += pl_size;
+                }
+                if( ni.sel_read & 0x0F )
+                {	/* has selected data */
+                  cicon[rez].sel_data = ptr;
+                }
+              }
+            }
+            /* Do whatever with "cicon". Must actually save data before
+               reading next icon because right now cicon points into ni.data. */
+            if( !neo4 ) break;		/* only read one plane if old fmt */
+          }
+      }
+      Mfree(code);
+    }
+  }
+  if( err )
+  {
+    Cconws( "Error in .NIC file format." );
+    return(0);
+  }
+  return(1);
+}
+
+----------- Addendum, 9/20/20: ------------
+
+The original file format includes executable MC68000 machine code to decrypt the
+icon data. In hindsight, this was a pretty self-aggrandizing and dumb idea,
+particularly since it makes reading the NIC file on other platforms impractical.
+Therefore, the source code is included, below. The extract_icon() function is
+the entry point from the previous code sample.
+
+#include "tos.h"
+
+#define KEY_START 0x37
+
+  #define MAX_PLANES4 4    /* 4 data planes */
+  #define MAX_W       2    /* width in words */
+  #define MAX_H       32   /* height in pixels */
+  #define MAX_DATA4   ((MAX_PLANES4+1)*MAX_W*MAX_H*2)
+         /* (4 data planes + 1 mask plane) * (normal + seleced) */
+  #define OLD_PLANES 2	   /* planes in a Neo 3 file */
+  #define MAX_SIZE4   ((MAX_PLANES4<<4)|MAX_PLANES4)
+  typedef struct
+  {
+    unsigned char size_x, size_y;
+    unsigned char readicon;	/* set to 0, 1, or 2 (1, 2, 4 planes) */
+    unsigned char norm_read, sel_read;
+    unsigned char unused;
+    unsigned char xchar, ychar;
+    unsigned char planes;      /* set to MAX_SIZE before calling */
+    unsigned char type;              /* use ICON_TYPE to convert */
+    char text[12];            /* see old icon format for details */
+    unsigned char colors[OLD_PLANES];
+    int data[MAX_DATA4];
+  } NEO_ICON;
+
+typedef struct
+{
+  unsigned char size_x, size_y;
+  unsigned char x_char, y_char;
+  unsigned char colors;
+  unsigned char type;
+  char string[12];
+  long data[3][4];	/* col_data, col_mask, sel_data, sel_mask */
+} ICONFILE;
+
+struct
+{
+  char magic[4];
+  int ver;
+  unsigned char copylen;
+  char copyright[67];
+  unsigned int entries;
+  long created, modified;
+  char author[26], comment[106];
+  unsigned int code_len;
+} header;
+
+void unencrypt( void *ptr, long size );
+void null_func(void);
+int *read_im( int hand, int *out, long off );
+int *clear_data( int *out, int count );
+
+int extract_icon( int hand, unsigned int num, NEO_ICON *icon )
+{
+  unsigned char planes, pl_ind, new;
+  ICONFILE icf;
+  int i, *out;
+  long l;
+
+  icon->sel_read = 0;
+  icon->norm_read = 0;
+  l = sizeof(header) + (long)null_func - (long)extract_icon +
+      num*sizeof(ICONFILE);
+  if( Fseek( l, hand, 0 ) != l || Fread( hand, sizeof(icf), &icf ) !=
+      sizeof(icf) ) return(-2);
+  unencrypt( &icf, sizeof(icf) );
+  if( icf.size_x > icon->size_x ) return(-3);
+  if( icf.size_y > icon->size_y ) return(-4);
+  if( (pl_ind = icon->planes) > 15 )
+  {
+    if( (pl_ind=icon->readicon) > 2 ) return -5;
+    if( !icf.data[pl_ind][0] && !icf.data[pl_ind][2] ) return -6;
+    planes = "\1\2\4"[pl_ind];
+    new = 1;
+  }
+  else if( !icf.data[0][0] ) return -5;
+  else
+  {
+    planes = 2;
+    pl_ind = 0;
+    new = 0;
+  }
+  (int)l = icf.size_x*icf.size_y<<1;
+  out = icon->data;
+  if( icon->planes&0xf )
+  {
+    if( icf.data[pl_ind][1] )
+    {
+      if( (out=read_im( hand, out, icf.data[pl_ind][1] )) == 0 ) return -2;
+      icon->norm_read |= 1<<4;
+    }
+    else if( !new ) out = clear_data( out, l );
+    if( icf.data[pl_ind][0] )
+    {
+      if( (out=read_im( hand, out, icf.data[pl_ind][0] )) == 0 ) return -2;
+      icon->norm_read |= planes;
+    }
+    else if( !new ) out = clear_data( out, l*planes );
+  }
+  if( icon->planes&0xf0 )
+  {
+    if( icf.data[pl_ind][3] )
+    {
+      if( (out=read_im( hand, out, icf.data[pl_ind][3] )) == 0 ) return -2;
+      icon->sel_read |= 1<<4;
+    }
+    else if( !new ) out = clear_data( out, l );
+    if( icf.data[pl_ind][2] )
+    {
+      if( (out=read_im( hand, out, icf.data[pl_ind][2] )) == 0 ) return -2;
+      icon->sel_read |= planes;
+    }
+    else if( !new ) out = clear_data( out, l*planes );
+  }
+  *(int *)&icon->size_x = *(int *)&icf.size_x;
+  icon->unused = 0;
+  *(int *)&icon->xchar = *(int *)&icf.x_char;
+  *(ICONCOPY *)&icon->type = *(ICONCOPY *)&icf.type;  /* copies one extra byte */
+  *(int *)&icon->colors = 1;
+  return(0);
+}
+
+int *read_im( int hand, int *out, long off )
+{
+  unsigned char temp[4], t, *b, *b2;
+  char k, t2;
+  int buf[MAX_PLANES4*MAX_W*MAX_H+1], l;
+
+  if( Fseek( off, hand, 0 ) != off || Fread( hand, 3L, temp ) != 3L ) return 0L;
+  l = *(int *)temp;
+  if( Fread( hand, l, buf ) != l ) return 0L;
+  unencrypt( b=(char *)buf, l );
+  if( !(temp[2]&3) )	/* uncompressed, do a long copy */
+  {
+    l >>= 2;
+    while( --l>=0 ) *((long *)out)++ = *((long *)b)++;
+  }
+  else while( --l>=0 )
+    if( (t = (k=*b++) & 0xC0) == 0 )	/* uncompressed */
+    {
+      k &= 0x3F;
+      l -= k+1;
+      do
+        *((char *)out)++ = *b++;	/* copy k+1 bytes */
+      while( --k>=0 );
+    }
+    else if( t == 0x40 )
+    {
+      k &= 0x3F;
+      t = *b++;
+      l--;
+      do
+        *((char *)out)++ = t;		/* repeat byte k+1 times */
+      while( --k>=0 );
+    }
+    else if( t == 0x80 )
+    {
+      l -= (t = ((k>>4)&3)+1) + 1;
+      k = (k&0xf) + 1;
+      do
+      {
+        t2 = t;
+        b2 = b;
+        do
+          *((char *)out)++ = *b2++;
+        while( --t2>=0 );
+      }
+      while( --k>=0 );
+      b = b2;
+    }
+    else break;
+  return out;
+}
+
+void unencrypt( void *buf, long size )
+{
+  char key=KEY_START;
+
+  while( --size >= 0 )
+  {
+    *((char *)buf)++ ^= key;
+    key += 0x21;
+  }
+}
+
+int *clear_data( int *out, int count )
+{
+  count>>=2;
+  while( --count >= 0 ) *((long *)out)++ = 0L;
+  return out;
+}
+
+void null_func(void)
+{
+}

@@ -1,0 +1,112 @@
+NeoDesk CLI "Read Me" File                             November, 2017
+==========================
+
+  This file contains important additions which you should read.  You might
+find it useful to print this file and keep it with your CLI manual.
+
+
+CFG_CLI.PRG
+-----------
+
+  It is important to note that any changes you make to the CLI using CFG_CLI
+  will not take effect until you have re-run that copy of the CLI. This means
+  that if you reconfigure NEO_CLI.ACC, you must re-boot your computer in order
+  to get the new settings.
+
+
+Path Handling in the NeoDesk CLI
+--------------------------------
+
+  Whenever you execute a program from the CLI, the system path remains
+  in the "current CLI path".  This is closer to how most text based
+  environments work.  If you are trying to run a program that requires
+  that its files be in the "system path" then make sure that you change
+  the CLI path to the path of that file before running it.
+
+
+Using the CLI from Inside Other Programs
+----------------------------------------
+
+  If you open the NeoDesk CLI from inside another program, the CLI path
+  will be set to the current "system path" to prevent problems.  Some
+  applications do not expect their path to be changed by the CLI.  If you
+  do change the path in the CLI you should try to return it to the original
+  path used by that program before continuing to use that program.
+
+
+Using TOS 1.0 & Redirection
+---------------------------
+
+  Due to a bug in TOS 1.0, you should not read from or write to the same
+  disk file without closing it first.  If you manually set .INPUT and
+  .OUTPUT to the same filename within a batch file, it may cause
+  unexpected results.
+
+  Using the "<->" characters to redirect both input and output does not
+  suffer from this problem because it shares the same file handle.  Newer
+  ROM versions fix this problem.
+
+
+Using "NeoDesk Accessories" with MultiDesk
+------------------------------------------
+
+  There are some things to keep in mind if using any "NeoDesk Accessories"
+  from inside of MultiDesk (from CodeHead Software).
+
+  First of all, make sure you run the included PATCH205.PRG if you are
+  using NeoDesk 2.05.  Newer versions of NeoDesk (beyond 2.05) do not
+  require this patch.
+
+  Due to a limitation in the way GEM handles accessories and applications,
+  there is no way for NeoDesk to communicate with accessories that are
+  inside of MultiDesk IF you have a MultiDesk accessory open.  This
+  limitation has several end effects:
+
+  1)  You cannot open another "NeoDesk Accessory" while a MultiDesk
+      accessory is open.  Remember, MultiDesk was only intended to allow
+      you to gain access to a larger number of desk accessories, not to be
+      able to open them all at the same time.  Trying to do so will simply
+      result in NeoDesk attempting to display the accessory file to the
+      screen (as if it had not been installed).
+
+  2)  If you have any "NeoDesk Accessories" inside of MultiDesk, you
+      should always try to make sure that you CLOSE any MultiDesk accessory
+      that is open before running a program.  This is necessary so that
+      NeoDesk is able to communicate with the "NeoDesk Accessories" that
+      are inside of MultiDesk and inform them that it is going to run a
+      program.
+
+      If you do run a program and you forgot to close any open MultiDesk
+      accessory, then make sure you do not access any of the "NeoDesk
+      Accessories" that are inside of MultiDesk until you return to the
+      NeoDesk desktop.
+
+  3)  "NeoDesk Accessories" that execute a program and then automatically
+      reopen when you return to NeoDesk should best be run outside of
+      MultiDesk in one of the standard accessory slots.
+
+      This is because once the "NeoDesk Accessory" reopens after running a
+      program, NeoDesk is unable to communicate with any remaining "NeoDesk
+      Accessories" inside of MultiDesk.
+
+
+Installing the included NeoDesk CLI Icon
+----------------------------------------
+
+  We have included an icon for the NeoDesk CLI.  You can draw your own or
+  use this one.  Some newer copies of NeoDesk 2.05 already have this icon
+  in the resource file.  To add this icon follow these simple steps:
+
+  1)  Run the NeoDesk Icon Editor.
+  2)  Open the NEO_CLI.NIC file and "Load and Add" the NEO_CLI.ACC icon.
+  3)  Drag the "new icon" icon over to the "*.acc" icon (it is the one
+      with the Atari logo).  This will insert a brand new icon before it.
+  4)  Copy the new NEO_CLI.ACC icon to the brand new icon that you just
+      created.
+  5)  Rename the new icon you just copied to "NEO_CLI.ACC" and delete the
+      original CLI icon.
+
+  The main reason for this is to insure that the NEO_CLI.ACC icon falls
+  before the "*.ACC" icon.  NeoDesk reads the icons from left to right,
+  top to bottom.  This means that if it will assign the first matching
+  icon it finds to a file.

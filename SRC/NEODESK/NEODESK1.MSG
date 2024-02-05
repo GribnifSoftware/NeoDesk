@@ -1,0 +1,48 @@
+;  NEODESK1.MSG:  messages in the shell
+;
+;  For information about translations, see NEODESK2.MSG
+;
+Data on this drive may be|damaged! Please check the|connections and ^
+be sure|there is a disk.
+Drive not ready!|Please insert a disk
+The disk in this drive|is write protected
+The original disk has been|removed from the drive
+|This device does not exist
+|This disk contains one|or more bad sectors
+Either Control-C was|pressed or an invalid|function was encountered
+|File not found
+|Path not found
+There are too many|files already open
+Access denied. This is either|a read-only file, a non-empty|^
+folder, or an open file
+You do not have enough free|memory for this operation
+This disk drive does|not seem to exist
+This does not seem to be|an executable program
+; The ? 's get replaced at run time
+[1][Version ?.0? of NEOLOAD.PRG|must be present in order for|this ^
+version of NEODESK.EXE|to run][Abort]
+\1BJ\0D\0AApplication exited with status %d
+The redirection file already|exists in read-only mode
+[1][%s|(TOS error #%D)][Ok]
+[1][|TOS error #%D][Ok]
+Could not switch to the|path of this application!
+NEODESK.EXE is either|missing or corrupted!
+\0D\0A\0D\0A\1BpPress any key or mouse button to return to NeoDesk\1Bq
+Reloading...
+[3][Could not find NEODESK.EXE|on this disk. Insert a|floppy ^
+containing that file|into drive %c to continue.][Continue|Quit]
+[Using NeoDesk...
+[1][Incompatible|NEO_INF.DAT file][Sorry]
+[1][The program could|not be opened][Ok]
+by Dan Wilga
+All Rights Reserved.
+Release
+Registered for:
+Use, duplication, rental, or sale of this product,
+except as described in the NeoDesk Licensing Agree-
+ment, is strictly prohibited. Violators will be
+prosecuted.
+[3][This operation requires|more memory than is|permitted in the Memory|^
+dialog. Proceed anyway?][Continue|Cancel]
+[1][There is not enough|free memory for this|operation][Cancel]
+;*** end of NEODESK1.MSG ***

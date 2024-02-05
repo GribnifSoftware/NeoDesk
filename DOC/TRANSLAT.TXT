@@ -1,0 +1,43 @@
+NOTE: IF YOU CLICK ON THE FINAL "OK" BOX IN REGISTER.PRG AFTER ENTERING A
+NAME AND ADDRESS, THE FILES REGISTER.PRG AND REGISTER.RSC WILL BE DELETED!
+PLEASE MAKE BACKUPS OF THESE FILES BEFORE TESTING.
+
+Notes on translating NeoDesk files
+----------------------------------
+
+Please make sure to translate all text and resource files on both disks,
+including the ones in the EXTRAS folder. If something is not translated,
+we will have to ship the final disks to you with it in English.
+
+When translating resource files, you must use a resource editor that keeps
+the order of the trees in tact; we recommend K-Resource. The Atari resource
+editor will rearrange the order of free strings within the resource, and should
+therefore not be used.
+
+All resources can be edited in monochrome, though it may be desirable to
+edit NEODESKL and NEODESKM in medium rez. DO NOT edit a file containing
+high rez coordinates (NEODESKH, ICONEDIT, NEOQ_H, NEOCNTRL, etc.) in medium
+rez!
+
+If the resource editor tells you that moving a particular object will cause
+the tree structure to be reorganized, cancel the operation! This can cause
+all kinds of problems.
+
+Please try to keep the vertical sizes and positions of buttons as they are
+now. There will be many cases where the translated string will cause a button
+to expand horizontally, and in this case you may have to adjust the horizontal
+position to preserve centering. Be very careful not to move an object
+vertically, especially if you are editing a medium resolution file in high
+rez, as the resources are oftentimes not "snapped".
+
+Please do not change any of the object flags unless you are sure it is an
+error.
+
+If something still does not look right, don't worry too much since I will be
+going over the translated files with a fine tooth comb, anyway. Some of the
+strings in .MSG files affect the sizes of boxes in the resource, and so these
+cases may not be obvious.
+
+Alerts in resources and in MSG files must consist of no more than 5 lines of
+30 characters each. The buttons must be no more than 30 characters total.
+

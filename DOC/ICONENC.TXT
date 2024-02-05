@@ -1,0 +1,45 @@
+Compression type
+----------------
+
+planes | type
+   2   |   2
+
+0	uncomp
+1	multi-plane
+2	single-plane
+
+Multi-plane comp
+----------------
+
+length	| token
+  2	|   2
+
+token:
+0	uncomp
+1	b/w	patt
+2	solid
+3	b/w solid
+
+length in pixels:
+0	4 bits
+1	8 bits
+2	12 bits		b/w: black first if set
+3	end
+
+w|b|w	=  0001 0010
+b|b|b	=  1011 0010
+
+
+Single-plane comp
+-----------------
+
+token	| count for repeat | length
+   2	|        2         | 4 or 6
+
+token:
+0	uncomp (length in lower 6 bits)
+1	repeat followed by byte (length in lower 6 bits)
+2	repeat (upper 2 bits) bytes (lower 4 bits) times
+3	end
+
+counts and lengths are -1

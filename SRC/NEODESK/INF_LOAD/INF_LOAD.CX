@@ -1,0 +1,888 @@
+/* NeoDesk 3.02 by Dan Wilga
+   Copyright ½ 1990, Gribnif Software.
+   All Rights Reserved.
+*/
+#include "aes.h"
+#include "string.h"
+#include "neodesk.h"
+#include "tos.h"
+#include "neocommn.h"
+#include "stdlib.h"
+#include "inf_conv.h"
+#include "xwind.h"
+
+#define index strchr
+#define rindex strrchr
+
+NEO_ACC *neo_acc;
+GUI *gui;
+INF_CONV *infc;
+char path[120], fname[13], buf[200], tmpf[130], exin, multitask, info, discard, **argv, bad;
+int hand, ver, curxmax, curymax, curcelht, xmax, ymax, AES_handle, stage,
+    neo_apid, retries, old_stage, argc;
+/* stage 0:info  1:select  2:convert  3:quit */
+Rect frect;
+
+void test_stage( int *buf );
+
+void cdecl spf( char *buf, char *fmt, ... ) {
+  (*neo_acc->mas->dopf)( buf, fmt, (unsigned int *)&... );
+}
+
+void get_ack(void)
+{
+  int buffer[8];
+  
+  do evnt_mesag(buffer);
+  while( buffer[0] != DUM_MSG );
+}
+
+void ack(void)                          /* acknowledge NeoDesk's message */
+{
+  int buf[8];
+  
+  buf[0] = DUM_MSG;                     /* always ack with this message */
+  appl_write( buf[1]=neo_apid, 16, buf );
+}
+
+void sel_if( OBJECT *form, int num, int truth )
+{
+  unsigned int *i = &form[num].ob_state;
+  
+  if( truth ) *i |= SELECTED;
+  else *i &= ~SELECTED;
+}
+
+int is_sel( OBJECT *o, int num )
+{
+  return o[num].ob_state & SELECTED;
+}
+
+int i_main( OBJECT *o, FORM *f );
+int t_main( OBJECT *o, int num, FORM *f );
+int x_main( OBJECT *o, int num, FORM *f );
+int i_rez( OBJECT *o, FORM *f );
+int x_rez( OBJECT *o, int num, FORM *f );
+int i_info( OBJECT *o, FORM *f );
+int x_info( OBJECT *o, int num, FORM *f );
+
+FORM forms[] = {
+   { 0,  0,  MAIN,   { 0, 1, 0, 0, 0, 0, 0 }, 0L, 0L,
+         i_main, t_main, x_main, 0L, 0L },	     /* Main */
+   { 0,  0,  REZ,    { 0, 1, 0, 0, 0, 1, 0 }, 0L, 0L,
+         i_rez,  0L,     x_rez, 0L, 0L },	     /* Rez */
+   { 0,  0,  CINFO,  { 0, 1, 0, 0, 0, 0, 0 }, 0L, 0L,
+         i_info, x_info, x_info, 0L, 0L } };         /* Info */
+
+int make_form( int num )
+{
+  FORM *f;
+  int i;
+  
+  f = forms+num;
+  if( !f->tree )
+  {
+    rsrc_gaddr( 0, f->treenum, &f->tree );
+    f->treenum = -1;
+    form_center( f->tree, &frect.x, &frect.y, &frect.w, &frect.h );
+  }
+  if( num==2 ) f->old_title = "";
+  if( (i=(*gui->start_form)( AES_handle, &f )) == 0 ) stage = 3;
+  return i;
+}
+
+int f_alert1( int num )
+{
+  char **p;
+  
+  rsrc_gaddr( 15, num, &p );
+  return( form_alert( 1, *p ) );
+}
+
+char *pathend( char *ptr )
+{
+  char *s;
+  
+  if( (s=rindex(ptr,'\\')) == 0 ) return(ptr);
+  return(s+1);
+}
+
+int fopen( char *name )
+{
+  int b;
+  
+  if( (b=Fopen(name,0)) < 0 )
+  {
+    f_alert1( A1 );
+    return(0);
+  }
+  return(b);
+}
+
+int select( int flag, char *name )
+{
+  int b;
+  char inf_name[120], **p;
+
+  if( flag )
+    if( (b=fopen(name)) > 0 )
+    {
+      strcpy( path, name );
+      strcpy( pathend(path), "*.INF" );
+      strcpy( fname, pathend(name) );
+      return(b);
+    }
+  rsrc_gaddr( 15, A7, &p );
+  while( (exin ? fsel_exinput( path, fname, &b, *p ) :
+      fsel_input( path, fname, &b )) && b )
+  {
+    strcpy( inf_name, path );
+    strcpy( pathend(inf_name), fname );
+    if( (b=fopen(inf_name)) > 0 ) return(b);
+  }
+  return(0);
+}
+
+void read_err(void)
+{
+  f_alert1( A2 );
+}
+
+int get_line(void)
+{
+  return( (*neo_acc->mas->get_line)(hand,buf,1,0) );
+}
+
+PROG_TYPE prog_type( int i )
+{
+  PROG_TYPE pt;
+  
+  pt.i = 0;
+  if( !i ) return(pt);
+  pt.p.set_me = 1;
+  pt.p.clear_screen = 1;
+  pt.p.show_status = 1;
+  switch( i )
+  {
+    case 1:
+      break;
+    case 3:
+      pt.p.takes_params = 1;
+    case 2:
+      pt.p.tos = 1;
+      break;
+    case 4:
+      pt.p.batch = 1;
+      pt.p.takes_params = 1;
+      break;
+  }
+  return( pt );
+}
+
+void convert( int *x, int *y, int *w, int *h /*, int dial */ )
+{
+/*  if( dial )
+  {
+    *x = (long)*x * curxmax / xmax;
+    *y = (long)*y * curymax / ymax * curcelht / celht;
+  }
+  else
+  {  */
+    *x = (long)*x * curxmax / xmax;
+    *y = (long)*y * curymax / ymax;
+    *w = (long)*w * curxmax / xmax;
+    *h = (long)*h * curymax / ymax;
+/*  }*/
+}
+
+void check( int *num, int max )
+{
+  if( *num > max ) *num=max;
+}
+
+#define TYPES1	37
+#define TYPES2	5
+char oks1[TYPES1], oks2[TYPES2];
+
+int is_ok( int index )
+{
+  if( index>=100 )
+  {
+    if( (index-=100)>=TYPES2 ) return 0;
+    return oks2[index];
+  }
+  if( index>=TYPES1 ) return 0;
+  return oks1[index];
+}
+
+int load_it( OBJECT *form )
+{
+  int *r, i, j, k, dum, progs, set[20];
+  char err, *ptr, c, temp[35];
+  MOST *z;
+  struct Wstruct *ws;
+  PRN_PARAM prn_param;
+  unsigned long qmsg[4];
+  static char xoks1[TYPES1] = { AUTOEXC, PRINTERQ, CPANEL, COLORS, SNAPGR,
+      PRTDIR, PREF, MISCSET, FLOP, BATCHPRO, TXTDISP, WINDOWS, WINDOWS,
+      WINDOWS, WINDOWS, WINDOWS, WINDOWS, WINDOWS, TEMPL, TEMPL, TEMPL,
+      TEMPL, TEMPL, TEMPL, TEMPL, CPYDELF, SRCHFL, TEMPL, DFLTPARM, DFLTPARM,
+      DFLTPARM, DFLTPARM, DFLTPARM, ENVSTR, DIALSET, DESKSET, WINDSET },
+      xoks2[TYPES2] = { DTOPICON, INSTALAP, EXTENSS, ENVSTR, DIALOGS };
+  
+  (*neo_acc->save_desktop)();
+  for( i=0; i<TYPES1; i++ )
+    oks1[i] = is_sel( form, xoks1[i] );
+  for( i=0; i<TYPES2; i++ )
+    oks2[i] = is_sel( form, xoks2[i] );
+  infc->is_ok = is_ok;
+  if( ver<3 )
+  {
+  z = neo_acc->mas->most;
+  err = 0;
+  progs = 0;
+  (*infc->init_inf_offs)();
+  if( (err = get_line()) == 0 )	/* skip alt path */
+    if( !ver )
+    {
+      if( make_form( 1 ) != OTHCONV ) return(1);
+    }
+    else if( (err = get_line()) == 0 )
+        (*neo_acc->sscnf)( buf, "%d %d %d", &xmax, &ymax, &dum ); /*&celht );*/
+
+  graf_mouse( HOURGLASS, 0L );
+  if( !err )
+    if( (err = get_line()) == 0 )
+      if( oks1[INF_AUTOEXC] ) strcpy( z->autoexec, buf );
+      
+  if( !err )
+    if( (err = get_line()) == 0 && oks1[INF_CONTROL] )
+    {
+      r = z->cntrl_set;
+      (*neo_acc->sscnf)( buf, ver ? "%d %d %d %d %d %d %d %d %d %d %d %d %d %d %d %d" :
+          "%d %d %d %d %d %d %d %d %d %d %d %d", &prn_param.prn_set, &prn_param.ffd,
+          r, r+1, r+2, r+3, r+4, r+5, r+6, r+7, r+8, r+9, r+10, r+11, r+12, r+13 );
+          /* sscnf stops if file is a 3.00-3.02 */
+      if( ver==1 ) *(r+4) |= 0xE;	/* turn other caches on */
+    }
+
+  if( !err )
+    if( (err = get_line()) == 0 && oks1[INF_PALETTE] )
+      for( i=0, ptr=buf; i<(ver?16:4); i++ )
+      {
+        (*neo_acc->sscnf)( ptr, "%x",  z->pallette+i );
+        ptr += 4;
+      }
+
+  if( !err )
+    if( ver && (err = get_line()) == 0 && oks1[INF_SRCHTMP] )
+      for( i=0, ptr=buf; i<6; i++ )
+      {
+        (*neo_acc->sscnf)( ptr, "%s",  z->template[i] );
+        if( z->template[i][0] == '^' ) z->template[i][0] = '\0';
+        ptr = index(ptr,' ') + 1;
+      }
+
+  if( !err )
+  {
+    if( (err = get_line()) == 0 )
+    {
+      if( ver )
+      {
+        if( ver==1 ) (*neo_acc->sscnf)( buf, 
+            "%d %d %d %d %d %d %d %d %d %d %d %d %d %d %d %d %d %d %d %s",
+            set, set+1, set+2, set+3, set+4, set+5, set+6, set+7, set+8,
+            set+9, set+10, set+11, set+12, set+13, set+14, set+15, set+16,
+            set+17, set+18, temp );
+        else (*neo_acc->sscnf)( buf, 
+            "%d %d %d %d %d %d %d %d %d %d %d %d %d %d %d %d %d %d %d %d %s",
+            set, set+1, set+2, set+3, set+4, set+5, set+6, set+7, set+8,
+            set+9, set+10, set+11, set+12, set+13, set+14, set+15, set+16,
+            set+17, set+18, set+19, temp );
+        if( oks1[INF_PRNTDIR] ) z->dir_prn.c = set[2];
+        if( oks1[INF_FORMAT] )
+        {
+          z->tracks = set[11];
+          z->sides = set[12];
+          z->spt = set[13];
+          z->twst = set[14];
+        }
+      }
+      else
+      {
+        (*neo_acc->sscnf)( buf, 
+            "%d %d %d %d %d %d %d %d %d %d %d %d %d %d %d %d %s", 
+            set+11, set+12, set+13, set+14, set+15, set+16, set+17, set, 
+            set+1, set+3, set+4, set+5, set+7, set+8, set+9, set+10, temp );
+        if( oks1[INF_WINDOW1] )
+        {
+          z->mshowicon = set[11];
+          z->mstlgsml = set[12];
+          z->mstcolumn = set[13];
+          z->msizdattim[0] = set[14];
+          z->msizdattim[1] = set[15];
+          z->msizdattim[2] = set[16];
+          z->msort_type = set[17];
+        }
+      }
+      if( oks1[INF_SNAP] )
+      {
+        z->snapx = set[0] + (ver ? 0 : 2) - 79;
+        z->snapy = set[1] + (ver ? 0 : 4) - 41;
+      }
+      if( oks1[INF_COPYMOV].ob_state )
+      {
+        z->move_mode = set[3];
+        z->conf_copy = set[4];
+        z->conf_del = set[5];
+        if( ver ) z->conf_over = set[6];
+        z->status_on = set[7];
+        z->tos_pause = set[8];
+        if( (z->files_fold=set[9]) < 10 ) z->files_fold = 10;
+        else check( &z->files_fold, 999 );
+        z->use_master = set[10];
+        if( ver )
+        {
+          z->ctrlZ = set[15];
+          z->status_report = set[16];
+          z->quit_alert = set[17];
+          z->saveconf = set[18];
+        }
+        if( ver>1 ) z->other_pref.i = set[19];
+      }
+      if( oks1[INF_BATCH] ) strcpy( z->batch_name, temp );
+    }
+  }
+  
+  if( !err && ver )
+    if( (err = get_line()) == 0 && oks1[INF_TXTREAD] )
+        strcpy( z->text_reader, buf );
+  
+  for( i=0; i<7 && !err; i++ )
+    if( (err = get_line()) == 0 && oks1[INF_WINDOW1] )
+    {
+      r = &((ws = &z->w[i])->x);
+      if( ver )
+      {
+        (*neo_acc->sscnf)( buf, "%d %d %d %d %d %d %c %D %d %d %d %d %d %d %d %d %s",
+            &ws->place, r, r+1, r+2, r+3, &ws->split, &ws->fold_flag,
+            &ws->f_off.l, &z->showicon[i], &z->stlgsml[i], &z->stcolumn[i],
+            z->sizdattim[i], z->sizdattim[i]+1, z->sizdattim[i]+2, z->sort_type+i,
+            &j, ws->path );
+        z->use_temp[i] = j;
+        z->sort_type[i];
+      }
+      else
+      {
+        (*neo_acc->sscnf)( buf, "%d %d %d %d %d %c %D %s", &ws->place, 
+            r, r+1, r+2, r+3, &ws->fold_flag, &ws->f_off.l, ws->path );
+        z->showicon[i] = z->mshowicon;
+        z->stlgsml[i] = z->mstlgsml;
+        z->stcolumn[i] = z->mstcolumn;
+        z->sizdattim[i][0] = z->msizdattim[0];
+        z->sizdattim[i][1] = z->msizdattim[1];
+        z->sizdattim[i][2] = z->msizdattim[2];
+        z->sort_type[i] = z->msort_type;
+        z->use_temp[i] = 0;
+        ws->split = 0L;
+      }
+      convert( r, r+1, r+2, r+3 );
+      j = curcelht==8 ? 73+5 : 137+6;
+      if( r[3] < j ) r[3] = j;
+      check( &r[2], curxmax );
+      ws->fold_flag -= '0';
+    }
+
+  for( i=0; i<32 && !err; i++ )
+/*  if( ver || i<32 )
+    { */
+      if( (err = get_line()) == 0 )
+        if( oks2[INF_DESKICN-100] )
+        {
+          (*neo_acc->sscnf)( buf, "%d %d %d %c %s", &z->i_type[i], &z->idat[i].ix,
+              &z->idat[i].iy, &c, tmpf );
+          z->idat[i].state = 0;
+          convert( &z->idat[i].ix, &z->idat[i].iy, &dum, &dum );
+          check( &z->idat[i].ix, curxmax-6*12 );
+          check( &z->idat[i].iy, curymax-curcelht-2-32-8 );
+          if( c == '^' ) c = '\0';
+          for( j=0; tmpf[j]; j++ )
+            if( tmpf[j] == '^' ) tmpf[j] = ' ';
+          if( !ver && z->i_type[i] >= CLIPBRD ) z->i_type[i]++;
+          if( z->i_type[i] >= 0 )
+          {
+            if( z->i_type[i] >= D_PROG-2 ) progs++;
+            z->idat[i].c = c;
+            strcpy( z->idat[i].label, tmpf );
+          }
+        }
+        else if( atoi(buf) >= (ver ? D_PROG-2 : D_PROG-2-1) ) progs++;
+/*  }
+    else if( form[DTOPICON].ob_state )
+    {
+      z->i_type[i] = -1;
+      z->idat[i].label[0] = '\0';
+    } */
+  
+  for( i=0; i<15 && !err; i++ )
+    if( ver || i<10 )
+    {
+      if( (err = get_line()) == 0 && oks2[INF_APPLIC-100].ob_state )
+        if( ver )
+        {
+          (*neo_acc->sscnf)( buf, "%d %d %s %s %s %s", &z->apps[i].type.i, &j,
+              z->apps[i].name, z->apps[i].path, z->apps[i].extn[0], 
+              z->apps[i].extn[1] );
+          if( ver==1 ) j |= 0x1f;	/* new flags for 3.03 */
+          z->apps[i].flags.c = j;
+        }
+        else
+        {
+          (*neo_acc->sscnf)( buf, "%d %s %s %s %s", &j,
+              z->apps[i].name, z->apps[i].path, z->apps[i].extn[0], 
+              z->apps[i].extn[1] );
+          z->apps[i].flags.c = 0x1f;	/* all new flags on */
+          z->apps[i].type = prog_type(j);
+        }
+    }
+    else if( oks2[INF_APPLIC-100] ) z->apps[i].type.i = 0;
+  
+  if( ver ) for( i=0; i<10 && !err; i++ )
+    if( (err = get_line()) == 0 && oks2[INF_EXTENSN-100] )
+    {
+      (*neo_acc->sscnf)( buf, "%d %s", &j, z->extns[i] );
+      z->extn_type[i].c = j;
+    }
+
+  if( !err )
+  {
+    for( i=0, ptr=z->env; i<10 && !err; i++ )
+      if( (err = get_line()) == 0 && oks2[INF_ENVIRON-100] )
+      {
+        j = strlen(buf);
+        strcpy( ptr, buf );
+        *(ptr+=j+1) = '\0';
+      }
+    if( oks2[INF_ENVIRON-100] ) while( ptr < z->env+620 ) *ptr++ = '\0';
+  }
+  
+  if( oks1[INF_TTP1] ) z->old_ttp[0] = '\0';
+  for( i=0; i<2 && !err; i++ )
+    if( (err = get_line()) == 0 && oks1[INF_TTP1] ) 
+        strcat( z->old_ttp, buf );
+   
+  if( !err )
+    for( i=0; i<progs && !err; i++ )
+      if( (err = get_line()) == 0 && oks2[INF_DESKICN-100] )
+      {
+        (*neo_acc->sscnf)( buf, "%d %d %s", &j, &k, tmpf );
+        z->programs[j].type.p.pexec_mode = k + !ver;
+        strcpy( z->programs[j].path, tmpf );
+      }
+
+  (*neo_acc->reset_desktop)();
+  if( oks1[INF_QUEUE] )
+  {
+    if( (i=appl_find("NEOQUEUE")) >= 0 )
+    {
+      qmsg[0] = ((long)PR_INIT << 16) | AES_handle;
+      qmsg[3] = (long)&prn_param;
+      appl_write( i, 16, qmsg );
+      get_ack();
+    }
+    else Setprt( prn_param.prn_set );
+  }
+  if( oks1[INF_PALETTE] )
+    for( i=0; i<16; i++ )
+      (*neo_acc->setcolor)( i, z->pallette[i] );
+  if( oks1[INF_CONTROL] )
+    if( (i=appl_find("NEOCNTRL")) >= 0 )
+    {
+      qmsg[0] = (long)CNTRL_INIT << 16;
+      qmsg[1] = (long)z->cntrl_set;
+      qmsg[2] = AES_handle;
+      appl_write( i, 16, qmsg );
+      get_ack();
+    }
+  }
+  else
+  {
+    if( multitask )
+    {
+      set[0] = NEO_ACC_INF;
+      set[2] = 0;
+      set[3] = NEO_ACC_MAGIC;
+      strcpy( buf, path );
+      strcpy( pathend(buf), fname );
+      *(char **)&set[4] = buf;
+      appl_write( set[1] = neo_apid, 16, set );
+    }
+    else
+    {
+      Fseek( 0L, hand, 0 );
+      (*infc->inf_load)( 0, hand, 1 );
+    }
+  }
+  graf_mouse( ARROW, 0L );
+  return(-1);
+}
+
+#pragma warn -par
+int i_main( OBJECT *o, FORM *f )
+{
+  o[MINVIS1].ob_flags = ver ? 0 : HIDETREE;
+  o[MINVIS2].ob_flags = ver==3 ? 0 : HIDETREE;
+  if( !ver )
+    if( !make_form(1) ) return 0;
+  return 1;
+}
+int t_main( OBJECT *o, int num, FORM *f )
+{
+  int i, j, max;
+
+  if( num==CSELALL )
+  {
+    for( j=0, max=DFLTPARM-CPANEL+1, i=CPANEL; i<=DFLTPARM; i++ )
+      if( is_sel(o,i) ) j++;
+    if( ver ) for( max+=DIALOGS-TEMPL+1, i=TEMPL; i<=DIALOGS; i++ )
+      if( is_sel( o, i ) ) j++;
+    if( ver==3 ) for( max+=DIALSET-MISCSET+1, i=MISCSET; i<=DIALSET; i++ )
+      if( is_sel( o, i ) ) j++;
+    j = j!=max;
+    for( i=CPANEL; i<=DFLTPARM; i++ )
+      sel_if( o, i, j );
+    (*gui->form_draw)( f, CPANEL-1, 0 );
+    if( ver )
+    {
+      for( i=TEMPL; i<=DIALOGS; i++ )
+        sel_if( o, i, j );
+      (*gui->form_draw)( f, MINVIS1, 0 );
+    }
+    if( ver==3 )
+    {
+      for( i=MISCSET; i<=DIALSET; i++ )
+        sel_if( o, i, j );
+      (*gui->form_draw)( f, MINVIS2, 0 );
+    }
+  }
+  return 0;
+}
+void wind_lock( int lock )
+{
+  wind_update( lock ? BEG_UPDATE : END_UPDATE );
+  wind_update( lock ? BEG_MCTRL : END_MCTRL );
+}
+int x_main( OBJECT *o, int num, FORM *f )
+{
+  int buf[8];
+  
+  if( num==CONVERT )
+  {
+    load_it( o );
+    if( f->handle<=0 && multitask )
+    {
+      wind_lock(0);
+      evnt_timer( 250, 0 );
+      buf[0] = NEO_AC_OPEN;
+      buf[2] = 0;
+      appl_write( buf[1]=AES_handle, 16, buf );
+      wind_lock(1);
+      return 1;
+    }
+    return 0;
+  }
+  else if( num==SELINF ) stage = 1;
+  else stage = 3;
+  if( f->handle<=0 ) test_stage(0L);
+  return 1;
+}
+int i_rez( OBJECT *o, FORM *f )
+{
+  int dum;
+  
+  sel_if( o, REZMED, dum = curxmax==640 && curymax==200 && curcelht==8 );
+  sel_if( o, REZHIGH, dum |= curxmax==640 && curymax==400 && curcelht==16 );
+  sel_if( o, REZOTH, !dum );
+  spf( o[OTHWID].ob_spec.tedinfo->te_ptext, "%d", curxmax );
+  spf( o[OTHHT].ob_spec.tedinfo->te_ptext, "%d", curymax );
+  return 1;
+}
+int x_rez( OBJECT *o, int num, FORM *f )
+{
+  if( is_sel( o, REZMED ) )
+  {
+    xmax = 640;
+    ymax = 200;
+/*          celht = 8;*/
+  }
+  else if( is_sel( o, REZHIGH ) )
+  {
+    xmax = 640;
+    ymax = 400;
+/*         celht = 16; */
+  }
+  else
+  {
+    xmax = atoi(o[OTHWID].ob_spec.tedinfo->te_ptext);
+    ymax = atoi(o[OTHHT].ob_spec.tedinfo->te_ptext);
+/*          celht = form[OTH8].ob_state ? 8 : 16; */
+  }
+  return 1;
+}
+int i_info( OBJECT *o, FORM *f )
+{
+  return 1;
+}
+int x_info( OBJECT *o, int num, FORM *f )
+{
+  stage = 1;
+  return 1;
+}
+#pragma warn +par
+
+int test_neo(void)
+{
+  if( !neo_acc || (long)neo_acc & 1 || neo_acc->nac_ver < 0x0400 ||
+      neo_acc->nac_ver >= 0x0500 )
+  {
+    f_alert1( A4 );
+    neo_acc = 0L;
+    return 0;
+  }
+  infc = neo_acc->mas->most->inf_conv;
+  if( infc->ver != INFCONV_VER )
+  {
+    f_alert1( BADNEO );
+    neo_acc = 0L;
+    return 0;
+  }
+  if( neo_apid<0 ) neo_apid = appl_find("NEODESK ");
+  gui = neo_acc->mas->most->gui;
+  curxmax = neo_acc->mas->most->graphics->v_x_max;
+  curymax = neo_acc->mas->most->graphics->v_y_max;
+  return 1;
+}
+
+int get_ver(void)
+{	/* return: 1 for continue, -1 for retry */
+  int i;
+  static char vers[][5] = { "2.02", "3.00", "3.03", "4.00" };
+
+  if( !(*neo_acc->mas->get_line)( hand, buf, 1, 1 ) )
+  {
+    for( i=0; i<4; i++ )
+      if( !strcmp( buf, vers[i] ) )
+      {
+        ver = i;
+        return 1;
+      }
+    f_alert1( A5 );
+    Fclose(hand);
+  }
+  else read_err();
+  return -1;
+}
+
+void find_neo( int *buf )
+{
+  /* throw away if too many tries */
+  if( ++retries>10 )
+  {
+    f_alert1( A3 );
+    return;
+  }
+  /* try to find NeoDesk */
+  if( (neo_apid = appl_find("NEODESK ")) >= 0 )
+  {
+    /* put the message back in my queue */
+    appl_write( buf[1], 16, buf );
+    buf[0] = NEO_ACC_ASK;         /* 89 */
+    buf[1] = neo_apid;
+    buf[3] = NEO_ACC_MAGIC;
+    buf[4] = AES_handle;
+    appl_write( neo_apid, 16, buf );
+  }
+}
+
+void do_quit(void)
+{
+  if( neo_acc ) (*gui->close_all_fwind)( AES_handle, 0 );
+  rsrc_free();
+  appl_exit();
+  if( neo_acc ) infc->is_ok = 0L;
+  exit(0);
+}
+
+int do_open( int *buf )
+{
+  if( bad )
+    if( _app ) do_quit();
+    else return 0;
+  if( buf && discard ) discard = 0;
+  else if( !neo_acc )
+    if( buf ) find_neo(buf);
+    else return 0;
+  else if( !stage )
+    if( argc<3 )
+      if( !info )
+      {
+        make_form(2);
+        info = 1;
+      }
+      else stage = 1;
+    else
+    {
+      argc = 0;
+      if( (hand = select( 1, argv[2] )) != 0 ) stage = 2;
+      else stage = 1;
+    }
+  return 1;
+}
+
+void test_stage( int *buf )
+{
+  int i;
+  char **p;
+  
+  if( neo_acc && old_stage != stage )
+  {
+again:
+    if( stage<3 ) do
+    {
+      if( stage==1 )
+        if( (hand = select( 0, 0L )) != 0 ) stage = 2;
+        else stage = 3;
+      if( stage==2 )
+        if( (i = get_ver())==0 ) stage = 3;
+        else if( i<0 ) stage = 1;
+    }
+    while( stage==1 );
+    if( stage==2 ) make_form(0);
+    if( stage==3 && _app )
+    {
+      rsrc_gaddr( 15, A6, &p );
+      if( form_alert( 2, *p ) == 1 )
+      {
+        stage = 0;
+        if( do_open(buf) ) goto again;
+      }
+    }
+  }
+  if( stage==3 )
+    if( _app ) do_quit();
+    else stage = 0;
+  old_stage = stage;
+}
+
+int main( int largc, char *largv[] )
+{
+  int buf[8], dum;
+  EMULTI emulti;
+  char aes_40, **p;
+  
+  argc = largc;
+  argv = largv;
+  AES_handle = appl_init();
+  exin = _GemParBlk.global[0] >= 0x140;
+  aes_40 = _GemParBlk.global[0] >= 0x400;
+  multitask = _GemParBlk.global[1] == -1;
+  if( !rsrc_load( "INF_CONV.RSC" ) )
+  {
+    form_alert( 1, "[1][Could not open|INF_CONV.RSC!][Ok]" );
+    bad = 1;
+    if( aes_40 || _app )
+    {
+      appl_exit();
+      return(0);
+    }
+    goto loop;
+  }
+  if( aes_40 ) shel_write( 9, 1, 0, 0L, 0L );
+  if( aes_40 || !_app )
+  {
+    rsrc_gaddr( 15, A8, &p );
+    menu_register( AES_handle, *p );
+  }
+  if( _app )
+  {
+    if( argc>=2 )
+    {
+      neo_acc = (NEO_ACC *)atol(argv[1]);
+      neo_apid = -1;
+    }
+    if( !test_neo() ) do_quit();
+  }
+  graf_mouse( ARROW, 0L );
+  graf_handle( &dum, &curcelht, &dum, &dum );
+  path[0] = Dgetdrv()+'A';
+  path[1] = ':';
+  Dgetpath( path+2, 0 );
+  strcat( path, "\\*.INF" );
+loop:
+  emulti.type = X_MU_DIALOG|MU_MESAG;
+  if( _app ) goto open;
+  for(;;)
+  {
+/*    if( gui ) (*gui->multi_evnt)( &emulti, buf );
+    else*/  multi_evnt( &emulti, buf );
+    if( emulti.event & MU_MESAG )
+      switch( buf[0] )
+      {
+        case NEO_ACC_INI:                       /* NeoDesk knows we are here */
+          if( buf[3]==NEO_ACC_MAGIC )
+          {
+            retries = 0;
+            neo_acc = *(NEO_ACC **)&buf[4];  /* set pointer to Neo's fncns */
+            neo_apid = buf[6];               /* NeoDesk's AES ID */
+            if( !test_neo() ) discard = 1;
+          }
+          break;  
+        case NEO_CLI_RUN:                       /* run a batch file */
+          ack();
+          break;
+        case NEO_ACC_PAS:
+          if( !neo_acc ) find_neo(buf);
+          else
+          {
+            ack();
+          }
+          break;
+        case NEO_ACC_BAD:
+          if( buf[3] == NEO_ACC_MAGIC )
+          {
+            if( neo_acc )
+            {
+              (*gui->close_all_fwind)( AES_handle, 0 );
+              infc->is_ok = 0L;
+            }
+            neo_acc = 0L;
+            retries = 0;
+            stage = 0;
+          }
+          break;
+        case AC_OPEN:
+        case NEO_AC_OPEN:
+open:     if( neo_acc && stage==2 ) make_form(0);  /* reopen modal main dial */
+          else do_open(buf);
+          break;
+        case AC_CLOSE:
+	  if( !bad && neo_acc ) (*gui->close_all_fwind)( AES_handle, 1 );
+	  stage = 0;
+	  break;
+	case AP_TERM:
+	  do_quit();
+	case WM_TOPPED:
+          wind_set( buf[3], WF_TOP, buf[4], buf[5], buf[6], buf[7] );
+          break;
+        case WM_MOVED:
+          wind_set( buf[3], WF_CURRXYWH, buf[4], buf[5], buf[6], buf[7] );
+          break;
+        case WM_CLOSED:
+	  (*gui->use_form)( buf[3], -1 );
+	  stage = _app ? 3 : 0;
+	  break;
+      }
+    if( emulti.event & X_MU_DIALOG ) (*gui->use_form)( buf[3], buf[2] );
+    test_stage(0L);
+  }
+}

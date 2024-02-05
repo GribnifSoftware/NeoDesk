@@ -1,0 +1,32 @@
+  0  2E 4E 49 43  Magic (".NIC")
+  4  03 00        NeoDesk 3 version
+  6  43           Length of remaining header
+  7  04 00 00     Neodesk 4 version
+  A  02 D8        Code offset
+  C  02 EE        Code offset
+  E  60 bytes     "NeoDesk 4 Icon File format..."
+--- Begin encrypted data. Set mask to $37. ---
+ 4A  2 bytes      Number of icons
+--- Begin encrypted data. Set mask to $37. ---
+ 4C  2 bytes      Creation Date (Tgetdate)
+ 4E  2 bytes      Creation Time (Tgettime)
+ 50  2 bytes      Modification Date (Tgetdate)
+ 52  2 bytes      Modification Time (Tgettime)
+ 54  26 bytes     Author
+ 6E  36 bytes     Comment line 1 (00-terminated)
+ 92  36 bytes     Comment line 2 (00-terminated)
+ B6  36 bytes     Comment line 3 (00-terminated)
+--- Begin encrypted data. Set mask to $37. ---
+ DA  2 bytes      Length of executable code ($308)
+ DC  776 bytes    Executable extraction code
+3E4               Icon data
+
+Encryption uses a single, unsigned byte mask. Each byte of the data is XORed with the mask, then the mask is incremented by 0x21 (33).
+
+static unsigned char key;
+static void encrypt( void *from, void *to, long size ) {
+  while( --size >= 0 ) {
+    *((char *)to)++ = *((char *)from)++ ^ key;
+    key += 0x21;
+  }
+}

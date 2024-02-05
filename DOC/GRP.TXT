@@ -1,0 +1,105 @@
+             NeoDesk 4 Group (GRP) file description.
+     Copyright 1994, Gribnif Software, All Rights Reserved.
+
+ #define GROUP_VER	0x47525000	/* GRP0 */
+
+ typedef union
+ {
+   unsigned char fix[2];
+   unsigned int coord;
+ } COORD;
+
+ typedef union
+ {
+   unsigned int i;
+   struct
+   {
+     unsigned showicon:1;
+     unsigned largetext:1;
+     unsigned showtype:1;
+     unsigned showpath:1;
+   } s;
+ } GH_OPTS;
+
+ typedef struct Group_hdr
+ {
+   long ver;			/* should be GROUP_VER */
+   unsigned int hdr_size,	/* sizeof(GROUP_HDR) */
+    		ent_size,	/* sizeof(GROUP_ITEM) */
+  		entries;	/* number of group items */
+   unsigned long create, modify;/* GEMDOS-format time/date */
+   char name[13],
+        desc[2][21],
+        sort, snapx, snapy;
+   COORD x,	/* window coord in multiples of character width */
+         y,	/*                                        height */
+         w,	/* window width in multiples of icon width */
+         h;	/*        height                     height */
+   int split,		/* split bar position */
+       offset[2];	/* scroll position [0]=upper, [1]=lower */
+   GH_OPTS opts;
+ } GROUP_HDR;
+
+ typedef union
+ {
+   unsigned int i;
+   struct
+   {
+     unsigned pexec_mode:8;
+     unsigned set_me:1;
+     unsigned batch:1;
+     unsigned return_status:1;
+     unsigned show_status:1;
+     unsigned clear_screen:1;
+     unsigned npg:1;
+     unsigned tos:1;
+     unsigned takes_params:1;
+   }p;
+ } PROG_TYPE;
+
+ typedef struct Grp_item
+ {
+   char path[120];
+   PROG_TYPE type;
+   long reserved;
+   int x, y;
+   char name[22];
+   char desc[2][21];
+   long reserved2;
+ } GROUP_ITEM;
+
+ Notes:  Begin by reading sizeof(GROUP_HDR) bytes. If the "ver" is
+ not GROUP_VER, refuse to load the file. Otherwise, skip forward
+ hdr.hdr_size-sizeof(GROUP_HDR) bytes and read hdr.entries entries.
+ 
+ For each entry, read sizeof(GROUP_ITEM) bytes and then skip forward
+ hdr.ent_size-sizeof(GROUP_ITEM) bytes before reading the next entry.
+
+ The PROG_TYPE field contains a description of the item. These values
+ are used in the "pexec_mode" field:
+ 
+ #define FLOPPY  0
+ #define HARDDSK 1
+ #define RAMDISK 2
+ #define CLIPBRD 3
+ #define PRINTER 4
+ #define TRASH   5
+ #define FOLDER  6
+ #define PROG    7
+ #define TEXT    8
+ #define BATCH   9
+ #define GROUP	10
+ #define NPI	11
+ 
+ The only values that should ever be in a GRP are 6-11, but the others
+ are included for completeness. If the type is 7 (program), then the
+ rest of the flags describe how to run the program.
+ 
+   set_me		Must be 1
+   batch		1 if batch file
+   return_status	Must be 0
+   show_status		Must be 1
+   clear_screen		Must be 1
+   npg			1 if program gets pointer to NEO_ACC from Neo
+   tos			1 if non-GEM program
+   takes_params		1 if Neo should ask for parameters

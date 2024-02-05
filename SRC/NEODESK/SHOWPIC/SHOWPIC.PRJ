@@ -1,0 +1,10 @@
+showpic.ttp
+=
+pcstart.o
+showpic.c
+;dither.c
+floyd.c
+tiny.s
+pcstdlib.lib
+new_gem.lib
+pctoslib.lib

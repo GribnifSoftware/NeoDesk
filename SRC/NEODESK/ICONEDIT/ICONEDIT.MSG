@@ -1,0 +1,58 @@
+; ICONEDIT.MSG:  messages in the icon editor
+; 
+;** This message has changed for rev 002
+Drag this color to the color to replace
+[3][Even though the display|cannot show the new mask,|it HAS been modified.][Ok]
+[2][There is no icon|for this resolution.|Create one?][Create|Cancel]
+;** "Volume name" of a window made by opening the Icons icon (20 max)
+NeoDesk Icons
+[1][ICONEDIT.RSC is not in|the current directory][Ok]
+[1][|Invalid icon operation][Ok]
+[1][You do not have enough|free memory to use the|icon editor][Ok]
+[2][|Copy data and mask|from which resolution?][%d Color|%d Color|Blank]
+[1][|A window is already|open to this file][Ok]
+[1][|Could not create|clipboard directory!][Ok]
+[1][|There is no more room|in memory for new icons][Ok]
+[3][|Delete icon(s)?][Delete|Cancel]
+[1][|Default icons cannot|be deleted][Ok]
+[1][|This disk is full][Ok]
+[3][Please be sure that your|NeoDesk boot disk is in|drive %c:][Ok|Cancel]
+Normal
+Selected
+[1][|This resource file does|not contain any icons][Ok]
+[1][|Error reading|resource file!][Ok]
+[1][|Error in .ICN|file format!][Ok]
+[1][|There is nothing|to paste][Ok]
+[2][There is no selected icon|for this resolution.|Create one?][Create|Cancel]
+[1][|Unrecognized .NIC|file format!][Ok]
+[3][|%s has been modified][Save|Abandon|Cancel]
+[1][The destination window does|not contain a default icon of|the correct ^
+type for this|operation][Ok]
+[1][|Icons cannot be|copied to this window][Ok]
+[2][| Copy icon(s)?][Copy|Cancel]
+[2][Copy the first icon's|data, masks, colors, and|letter position to the^
+|second?][Copy|Cancel]
+[3][Changes have been made|to the NeoDesk Icons or|desktop pattern. Are you^
+|sure you want to lose them?][Reset|Cancel]
+[3][Changes have been made|to the NeoDesk Icons or|desktop pattern. Save|^
+before quitting?][Save|Abandon|Cancel]
+[1][|A .NIC file with this|name already exists][Ok]
+[1][You must supply a|non-blank name for|this .NIC file][Ok]
+[1][This operation would affect|the order of one or more|default icons ^
+and therefore|cannot be completed][Ok]
+[2][|Automatic or Manual reorder?][Auto|Manual|Cancel]
+[3][|Delete all but the|default NeoDesk icons?][Delete|Cancel]
+[3][Delete all but|the default icons in|this window?][Delete|Cancel]
+ %d icon%s 
+ 1 icon selected
+ %d icons selected
+;** 12 chars max
+Desk Pattern
+Select the block to cut
+Select the block to copy
+Click on the location to paste to
+;** These two strings are for the demo only. They can be left out of the real version
+[3][Neither the NeoDesk|icons nor .NIC files can|be saved in this demo][Ok]
+[3][New .NIC files|cannot be created|in this demo][Ok]
+;*** End of ICONEDIT.MSG
+
